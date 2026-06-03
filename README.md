@@ -1,148 +1,143 @@
+<div align="center">
+
 # Build Radar
 
-**Uiverse for full-stack builders** — discover open-source projects, techniques, starter templates, MCP servers, and coding-agent workflows you can remix into what you're building.
+### The discovery engine for people who actually ship.
 
-> Uiverse = copy-paste UI components.  
-> Build Radar = copy-paste project ideas, repos, techniques, and workflows.
+**Describe what you're building. Get back the real open-source projects, techniques, starter templates, MCP servers, and agent workflows you can remix — ranked by how remixable they actually are, not how loud they trend.**
 
-## Monorepo layout
+</div>
+
+---
+
+## The problem
+
+Every builder loses the same hours.
+
+You have an idea. You know *someone* has already solved 70% of it — the auth flow, the RAG pipeline, the Whisper integration, the agent loop. But finding it means crawling GitHub stars, doomscrolling Hacker News, skimming arXiv, and digging through a hundred "Top 10 AI repos" posts that are all the same five hyped libraries.
+
+Search engines rank by **popularity**. Builders need ranking by **remixability** — *can I actually pull this into my project this weekend?*
+
+Those are not the same question. Build Radar answers the second one.
+
+## What it does
+
+You type a full project-context query — *"I'm building a RAG Chrome extension that explains research papers, TypeScript preferred"* — and Build Radar returns concrete artifacts with:
+
+- **`why_relevant`** — why this matches *your* project, not just your keywords
+- **`how_to_remix`** — what to fork, swap, and keep
+- **setup commands + implementation steps** — pulled from the source
+- **honest scores** — quality, remixability, hype-risk, and an "underground" score that surfaces gems before they're famous
+
+It indexes more than repos: **starter templates, techniques, MCP servers, coding-agent workflows, architecture patterns, and papers** — the full surface area of how things actually get built today.
+
+## Why it's different
+
+**1. It ranks for remixability, not popularity.**
+A blended score — project relevance, remixability, quality, recency, *minus* a hype-risk penalty — so you get things you can use, not things that are merely viral. The `underground_score` deliberately surfaces high-signal projects before they hit the front page.
+
+**2. Search is instant because crawling never touches the search path.**
+Everything is pre-indexed. Embeddings and scores are computed at ingestion time. A query is pure Postgres — full-text (`tsvector`) + vector (pgvector cosine) fused with Reciprocal Rank Fusion — and returns in milliseconds. Crawlers run continuously in the **background** and never block a user. Freshness without latency.
+
+**3. It speaks fluent agent.**
+Build Radar ships a first-class **MCP server**. Your coding agent (Cursor, Claude Code, Cline) calls the *exact same* search API the website uses. The agent gets clean structured JSON — titles, scores, remix notes, setup steps — and does the reasoning on *its own* model subscription. Build Radar runs **zero paid LLM calls** for discovery.
+
+**4. Project-context understanding, no LLM tax.**
+A rule-based intent layer extracts frameworks, tools, and goals from your sentence, then enriches retrieval — so "lecture summarizer with quizzes in Next.js + Supabase" finds the right starter even when none of those exact words are in its README.
+
+## How it works
 
 ```
-apps/web/     Next.js 15 frontend
-apps/api/     FastAPI backend
-apps/mcp/     TypeScript MCP server (calls API, no DB logic)
-workers/      Python crawlers + embedding backfill
-packages/db/  PostgreSQL schema + seed data
+                          ┌──────────────────────────────┐
+   GitHub · HN · arXiv ──▶│   Background crawlers          │
+                          │   normalize → score → embed    │
+                          └───────────────┬────────────────┘
+                                          │ upsert (dedupe by URL)
+                                          ▼
+                            ┌──────────────────────────┐
+                            │  PostgreSQL + pgvector    │   ◀── single source of truth
+                            │  FTS index · HNSW vectors │
+                            └─────────────┬─────────────┘
+                                          │ reads only (no crawl)
+                        ┌─────────────────┴─────────────────┐
+                        ▼                                     ▼
+                 ┌─────────────┐                      ┌──────────────┐
+                 │  FastAPI    │  same /search API    │  MCP server  │
+                 │  hybrid     │◀────────────────────▶│  (4 tools)   │
+                 │  search     │                      └──────┬───────┘
+                 └──────┬──────┘                             │
+                        ▼                                     ▼
+                 Next.js web app                     Coding agents
+                 (search · cards · detail)           (Cursor / Claude / Cline)
 ```
 
-## Prerequisites
+**The rule that makes it fast:** writers (crawlers) and readers (search, MCP, web) are fully decoupled. Heavy work happens once, at ingestion. Reads are cheap, identical across surfaces, and instant.
 
-- Docker (Postgres + pgvector)
-- Node.js 20+
-- Python 3.11+ (3.12 recommended)
+## The search pipeline
 
-## Quick start (local)
+1. **Project-intent extraction** — frameworks, tools, tags, project type (rule-based, no LLM)
+2. **Full-text retrieval** — Postgres `ts_rank_cd` across multiple strategies
+3. **Vector retrieval** — pgvector cosine over local SentenceTransformers (`all-MiniLM-L6-v2`) embeddings
+4. **Reciprocal Rank Fusion** — merges keyword, vector, and intent signals
+5. **Final ranking** — relevance · remixability · quality · recency · underground − hype-risk
+6. **`why_relevant`** — a tailored explanation generated per result
 
-### 1. Environment
+## Quick start
 
 ```bash
-cp .env.example .env
-# Optional: set GITHUB_TOKEN for crawlers
+cp .env.example .env          # optional: set GITHUB_TOKEN for fuller GitHub crawls
+
+docker compose up -d          # Postgres + pgvector, plus the background crawler
 ```
 
-### 2. Database + background crawler
-
 ```bash
-docker compose up -d
-# Postgres: schema + seed on first boot (small starter set).
-# crawler: bootstraps a larger index when count < 40, then refreshes HN/GitHub/arXiv on a schedule.
-# Set GITHUB_TOKEN in .env for faster, fuller GitHub indexing.
-```
-
-Postgres is on host port **5433**. Search stays **instant** (reads Postgres only). New artifacts appear after background crawls finish — refresh search or wait for the status bar count to rise.
-
-**Grow the seed for new clones:** after crawling, run `python packages/db/export_seed_from_db.py` and commit `packages/db/seed.sql`. See [packages/db/README.md](packages/db/README.md) (current seed = **12** artifacts).
-
-Re-apply manually if needed:
-
-```bash
-docker exec -i build_radar_pg psql -U postgres -d build_radar < packages/db/schema.sql
-docker exec -i build_radar_pg psql -U postgres -d build_radar < packages/db/seed.sql
-```
-
-### 3. API
-
-```bash
+# API
 cd apps/api
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 4. Embeddings (optional if crawler is running)
-
-The `crawler` service and `bootstrap_index.py` run `backfill_embeddings` automatically. Manual:
-
 ```bash
-cd workers && python ingest/backfill_embeddings.py
-```
-
-### 5. Frontend
-
-```bash
+# Web
 cd apps/web
 npm install
-npm run dev
+npm run dev                   # http://localhost:3000
 ```
 
-Open http://localhost:3000
+The index starts empty and fills itself: the background crawler bootstraps from Hacker News, GitHub, and arXiv, then keeps refreshing on a short interval. Search is live the moment the first artifacts land — and stays instant the whole time.
 
-**Try the UI:** search from the home bar → results with artifact cards → click **Details** → **Star** on cards or detail page.
+> Want a fat index immediately on a fresh clone? Crawl for a while, then
+> `python packages/db/export_seed_from_db.py` and commit `packages/db/seed.sql`.
 
-Copy `apps/web/.env.local.example` → `apps/web/.env.local` if the API is not on port 8000.
-
-### 6. GitHub crawler (optional)
+## Connect a coding agent (MCP)
 
 ```bash
-cd workers
-pip install -r requirements.txt
-# Set GITHUB_TOKEN in .env for higher rate limits
-python ingest/run_github.py
-
-# Single query dry-run:
-python ingest/run_github.py --dry-run --query "MCP server"
+cd apps/mcp && npm install && npm run build
 ```
 
-Searches 21 vibe-coder starter terms, fetches READMEs, extracts stack metadata,
-scores artifacts, generates embeddings, dedupes by `canonical_url`, and logs `crawl_runs`.
-
-**Scheduled crawls (cron-ready):**
-
-```bash
-cd workers
-python run_scheduled.py --list
-python run_scheduled.py github    # every 30–60m recommended
-python run_scheduled.py hn        # every 15–30m
-python run_scheduled.py arxiv     # every 6–12h
-python run_scheduled.py embeddings
+```json
+{
+  "mcpServers": {
+    "build-radar": {
+      "command": "node",
+      "args": ["/absolute/path/to/Build Radar/apps/mcp/dist/index.js"],
+      "env": { "API_BASE_URL": "http://localhost:8000" }
+    }
+  }
+}
 ```
 
-See `workers/crontab.example` for sample cron entries.
+Then ask your agent: *"Use Build Radar to find open-source repos for a RAG Chrome extension over research papers."* Full tool docs: **[apps/mcp/README.md](apps/mcp/README.md)**.
 
-### 7. MCP server (for coding agents)
+## Monorepo layout
 
-```bash
-cd apps/mcp
-npm install
-npm run build
-API_BASE_URL=http://localhost:8000 npm start
 ```
-
-Full setup, client config (Cursor / Claude / Cline), and example tool I/O: **[apps/mcp/README.md](apps/mcp/README.md)**.
-
-## Smoke tests
-
-With API running:
-
-```bash
-chmod +x scripts/smoke_test.sh scripts/search_quality_test.sh
-./scripts/smoke_test.sh
-./scripts/search_quality_test.sh   # asserts lecture/RAG/MCP/CV queries
-```
-
-Pytest (from `apps/api`):
-
-```bash
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/build_radar \
-  PYTHONPATH=. pytest tests/test_search_unit.py tests/test_search_integration.py -q
-```
-
-Or manual curls:
-
-```bash
-curl "http://localhost:8000/health"
-curl -G "http://localhost:8000/search" --data-urlencode "q=AI lecture summarizer"
+apps/web/      Next.js 15 frontend (search, cards, detail, stars)
+apps/api/      FastAPI backend (hybrid search, scoring, stats)
+apps/mcp/      TypeScript MCP server — calls the API, no DB, no LLM
+workers/       Crawlers (GitHub · HN · arXiv) + scheduler + embedding backfill
+packages/db/   PostgreSQL + pgvector schema, seed, and DB→seed exporter
 ```
 
 ## API endpoints
@@ -150,52 +145,61 @@ curl -G "http://localhost:8000/search" --data-urlencode "q=AI lecture summarizer
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| GET | `/artifacts` | List/filter artifacts |
+| GET | `/search?q=` | Hybrid project-context search |
+| GET | `/artifacts` | List / filter artifacts |
 | GET | `/artifacts/{id}` | Artifact detail |
-| GET | `/search?q=` | Hybrid search |
-| POST/DELETE | `/artifacts/{id}/star` | Star/unstar |
+| POST/DELETE | `/artifacts/{id}/star` | Star / unstar |
+| GET | `/stats` | Index size, embeddings %, crawl freshness |
 | GET | `/profiles/{username}` | Profile + star count |
 | GET | `/leaderboard` | Top profiles |
 
-## Search architecture
+## Crawling & freshness
 
-1. Rule-based **project intent** extraction (frameworks, tools, tags)
-2. **Full-text** search (Postgres `tsvector`)
-3. **Vector** search (pgvector cosine, SentenceTransformers `all-MiniLM-L6-v2`)
-4. **RRF** fusion + metadata-weighted final score
-5. `why_relevant` string per result
+Crawlers run manually, on cron, via the Docker `crawler` daemon, or as a background refresh after search — **never on the search path itself**.
 
-No paid LLM calls for search.
+```bash
+cd workers
+python run_scheduled.py --list
+python run_scheduled.py github       # repos
+python run_scheduled.py hn           # Hacker News stories
+python run_scheduled.py arxiv        # papers
+python run_scheduled.py embeddings   # backfill vectors
+```
 
-## Cost rule
+Recommended cadence (see `workers/crontab.example`): GitHub 30–60m · HN 15–30m · arXiv 6–12h.
 
-Artifacts are **pre-indexed**. Search hits your database. The MCP server returns structured JSON; the user's coding agent does expensive reasoning on their own subscription.
+## Tech stack
 
-## What's implemented vs stubbed
+| Layer | Choice |
+|-------|--------|
+| Frontend | Next.js 15 · TypeScript · Tailwind |
+| Backend | FastAPI · asyncpg |
+| Data | PostgreSQL + pgvector (FTS + HNSW) |
+| Embeddings | SentenceTransformers `all-MiniLM-L6-v2` (local, no paid LLM) |
+| Agent layer | Model Context Protocol (TypeScript) |
+| Crawlers | Python (GitHub REST · HN Algolia · arXiv API) |
 
-| Feature | Status |
-|---------|--------|
-| Schema + seed (12 artifacts) | ✅ |
-| FastAPI CRUD + search + stars | ✅ |
-| Hybrid FTS + vector search | ✅ (needs embedding backfill) |
-| Rule-based scoring + moderation | ✅ |
-| Next.js pages (home, search, detail, profile) | ✅ |
-| GitHub crawler | ✅ |
-| HN + arXiv crawlers | ✅ |
-| MCP server (4 tools) | ✅ |
-| Hugging Face crawler | 🔲 stub |
-| RSS crawler | 🔲 stub |
-| Real auth | 🔲 fake username only |
-| Admin moderation UI | 🔲 API only via `user_posts.status` |
+## Status
 
-## Suggested next builds
+| Capability | State |
+|------------|-------|
+| Hybrid FTS + vector search with RRF | ✅ |
+| Project-intent extraction + `why_relevant` | ✅ |
+| Remixability / quality / hype-risk / underground scoring | ✅ |
+| Background crawler daemon (GitHub · HN · arXiv) | ✅ |
+| MCP server (search, similar, details, recommend-stack) | ✅ |
+| Next.js app (home, search, detail, stars) | ✅ |
+| Embedding backfill + DB→seed export | ✅ |
+| Hugging Face / RSS crawlers | 🔲 stubbed |
+| Hosted deployment + real auth | 🔲 next |
 
-1. Admin moderation endpoints + pending queue UI
-2. Hugging Face + RSS crawlers
-3. Supabase deployment + real auth (Clerk/Supabase)
-4. Search analytics dashboard from `search_events`
-5. Live scan fallback when DB has no matches
+## Where it goes next
+
+- One-command hosted deploy (managed Postgres + API) so a whole team shares one fresh index
+- Hugging Face + RSS crawlers for models and builder blogs
+- Search analytics from `search_events` to tune ranking on real queries
+- Optional live-scan fallback when the index has a genuine gap
 
 ## License
 
-MIT (add your own LICENSE file when you open-source the repo)
+MIT — add a `LICENSE` file before open-sourcing.
