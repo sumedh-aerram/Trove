@@ -1,0 +1,113 @@
+{
+  "note": "Example MCP tool inputs/outputs. UUIDs match seed data when using packages/db/seed.sql.",
+  "tools": {
+    "search_artifacts": {
+      "input": {
+        "query": "I'm building a RAG Chrome extension that explains research papers. I need open-source repos, architecture ideas, and useful libraries.",
+        "frameworks": ["TypeScript"],
+        "limit": 3
+      },
+      "output": {
+        "results": [
+          {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "title": "paperpal/rag-chrome-extension",
+            "source_url": "https://github.com/paperpal/rag-chrome-extension",
+            "artifact_type": "starter_template",
+            "summary": "Chrome extension boilerplate that explains the current web page or PDF using RAG over its content.",
+            "why_relevant": "Matches your project because it combines browser extension architecture with RAG over research papers.",
+            "how_to_remix": "Replace the embedding backend with your own API, change the system prompt, and point the retriever at your own document store.",
+            "implementation_steps": [
+              "Load the unpacked extension in Chrome",
+              "Configure your model endpoint in options",
+              "Open any article or arXiv PDF",
+              "Ask a question in the side panel"
+            ],
+            "setup_commands": [
+              "git clone https://github.com/paperpal/rag-chrome-extension",
+              "npm install",
+              "npm run build"
+            ],
+            "tags": ["rag", "extension", "browser", "pdf"],
+            "frameworks": ["Chrome Extension", "React", "Vite"],
+            "tools": ["LangChain", "Chroma"],
+            "quality_score": 79,
+            "remixability_score": 81,
+            "hype_risk_score": 22
+          }
+        ]
+      }
+    },
+    "find_similar_projects": {
+      "input": {
+        "project_description": "AI lecture summarizer with quiz generation",
+        "current_stack": ["Next.js", "Supabase"],
+        "desired_features": ["Whisper", "quiz"],
+        "limit": 3
+      },
+      "output": {
+        "results": [
+          {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "title": "lecture-genius/ai-lecture-summarizer",
+            "source_url": "https://github.com/lecture-genius/ai-lecture-summarizer",
+            "artifact_type": "starter_template",
+            "summary": "Full-stack starter that turns lecture recordings into summaries, flashcards, and quizzes.",
+            "why_relevant": "Matches your project because it targets lecture/video content with summarization and study features you can remix.",
+            "how_to_remix": "Swap the transcription source for your own audio, change the quiz prompt template, and reuse the Supabase schema.",
+            "setup_commands": ["git clone https://github.com/lecture-genius/ai-lecture-summarizer", "pnpm install", "pnpm dev"],
+            "frameworks": ["Next.js", "Supabase", "Tailwind"],
+            "tools": ["Whisper", "Supabase", "pgvector"],
+            "quality_score": 82,
+            "remixability_score": 78
+          }
+        ]
+      }
+    },
+    "get_artifact_details": {
+      "input": {
+        "artifact_id": "00000000-0000-0000-0000-000000000004"
+      },
+      "output": {
+        "id": "00000000-0000-0000-0000-000000000004",
+        "title": "mcphub/repo-search-mcp",
+        "source_url": "https://github.com/mcphub/repo-search-mcp",
+        "artifact_type": "mcp_server",
+        "summary": "A Model Context Protocol server that lets coding agents search and read GitHub repositories.",
+        "what_it_helps_build": "An MCP server that exposes repo search + file read tools to Claude Code, Cursor, and Cline.",
+        "technical_core": "Implements the MCP stdio transport in TypeScript, wraps the GitHub search and contents APIs.",
+        "setup_commands": [
+          "git clone https://github.com/mcphub/repo-search-mcp",
+          "npm install",
+          "npm run build",
+          "node dist/index.js"
+        ],
+        "frameworks": ["Express"],
+        "tools": ["MCP", "Claude Code", "Cursor", "Cline"],
+        "quality_score": 85,
+        "remixability_score": 83,
+        "hype_risk_score": 15
+      }
+    },
+    "recommend_stack": {
+      "input": {
+        "project_description": "MCP server for coding agents to search repos",
+        "constraints": ["TypeScript"]
+      },
+      "output": {
+        "frameworks": ["Express", "TypeScript"],
+        "tools": ["MCP", "Claude Code", "Cursor", "Cline"],
+        "languages": ["TypeScript"],
+        "based_on_artifacts": 8,
+        "sample_artifacts": [
+          {
+            "id": "00000000-0000-0000-0000-000000000004",
+            "title": "mcphub/repo-search-mcp",
+            "source_url": "https://github.com/mcphub/repo-search-mcp"
+          }
+        ],
+        "note": "Stack suggestions are aggregated from indexed artifacts matching your description."
+      }
+    }
+  }
+}

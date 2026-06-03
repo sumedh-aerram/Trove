@@ -1,0 +1,25 @@
+# Build Radar — example cron entries (adjust paths and venv)
+# Install: crontab -e
+#
+# Assumes:
+#   REPO=/Users/you/Build Radar
+#   VENV=$REPO/workers/.venv/bin/python
+#   cd $REPO/workers before each job
+
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# GitHub — every 45 minutes
+*/45 * * * * cd "/Users/you/Build Radar/workers" && /path/to/.venv/bin/python run_scheduled.py github >> /tmp/build-radar-github.log 2>&1
+
+# Hacker News — every 20 minutes
+*/20 * * * * cd "/Users/you/Build Radar/workers" && /path/to/.venv/bin/python run_scheduled.py hn >> /tmp/build-radar-hn.log 2>&1
+
+# arXiv — every 8 hours
+0 */8 * * * cd "/Users/you/Build Radar/workers" && /path/to/.venv/bin/python run_scheduled.py arxiv >> /tmp/build-radar-arxiv.log 2>&1
+
+# RSS — every 45 minutes (when implemented)
+# */45 * * * * cd "/Users/you/Build Radar/workers" && /path/to/.venv/bin/python run_scheduled.py rss >> /tmp/build-radar-rss.log 2>&1
+
+# Backfill embeddings after crawls — every 2 hours
+15 */2 * * * cd "/Users/you/Build Radar/workers" && /path/to/.venv/bin/python run_scheduled.py embeddings >> /tmp/build-radar-emb.log 2>&1

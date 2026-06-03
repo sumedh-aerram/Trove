@@ -1,0 +1,28 @@
+# Env
+.env
+.env.local
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+
+# Models / caches
+.cache/
+.hf_cache/
+
+# OS
+.DS_Store

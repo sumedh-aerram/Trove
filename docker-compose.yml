@@ -1,0 +1,45 @@
+services:
+  # Keeps the index growing in the background (bootstrap on first start, then periodic crawls).
+  # Search/MCP stay fast — they only read Postgres.
+  crawler:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    container_name: build_radar_crawler
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/build_radar
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      BOOTSTRAP_MIN_ARTIFACTS: ${BOOTSTRAP_MIN_ARTIFACTS:-40}
+      BOOTSTRAP_GITHUB_QUERY_LIMIT: ${BOOTSTRAP_GITHUB_QUERY_LIMIT:-7}
+      SKIP_BOOTSTRAP: ${SKIP_BOOTSTRAP:-}
+    volumes:
+      - ./workers:/app/workers
+      - ./apps/api:/app/apps/api
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: build_radar_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: build_radar
+    ports:
+      - "5433:5432"
+    volumes:
+      - build_radar_pgdata:/var/lib/postgresql/data
+      # Schema + seed are auto-applied on first boot of a fresh volume.
+      - ./packages/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./packages/db/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d build_radar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  build_radar_pgdata:
