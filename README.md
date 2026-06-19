@@ -231,4 +231,4 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 
 ## License
 
-MIT. Add a `LICENSE` file before open-sourcing.
+MIT, see [LICENSE](LICENSE).
