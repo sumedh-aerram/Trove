@@ -57,7 +57,7 @@ def _maybe_bootstrap() -> None:
 
 
 def main() -> None:
-    logger.info("Build Radar crawl daemon starting (DATABASE_URL set=%s)", bool(os.getenv("DATABASE_URL")))
+    logger.info("Trove crawl daemon starting (DATABASE_URL set=%s)", bool(os.getenv("DATABASE_URL")))
     _maybe_bootstrap()
 
     last_run: dict[str, float] = {name: 0.0 for name in DAEMON_JOBS}

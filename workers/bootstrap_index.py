@@ -64,7 +64,7 @@ async def main_async(min_artifacts: int, github_query_limit: int) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Bootstrap Build Radar index")
+    p = argparse.ArgumentParser(description="Bootstrap Trove index")
     p.add_argument(
         "--min-artifacts",
         type=int,

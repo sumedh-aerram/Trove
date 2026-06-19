@@ -11,9 +11,9 @@ const sans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Build Radar",
+  title: "Trove",
   description:
-    "Describe what you're building and see the landscape of projects, techniques, and tools you can remix.",
+    "Describe what you're building and see the landscape of projects, techniques, and tools you can remix on Trove.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="/"
           className="fixed left-5 top-5 z-50 text-[13px] font-medium tracking-tight text-[var(--muted)] transition-colors hover:text-[var(--ink)]"
         >
-          Build Radar
+          Trove
         </Link>
         {children}
       </body>

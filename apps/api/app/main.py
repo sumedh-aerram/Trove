@@ -1,4 +1,4 @@
-"""Build Radar FastAPI application."""
+"""Trove FastAPI application."""
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Build Radar API", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Trove API", version="0.1.0", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,

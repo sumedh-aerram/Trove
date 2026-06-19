@@ -1,6 +1,6 @@
-# Build Radar MCP Server
+# Trove MCP Server
 
-Connects **coding agents** (Cursor, Claude Code, Cline, etc.) to [Build Radar](https://github.com) via the **FastAPI backend**.
+Connects **coding agents** (Cursor, Claude Code, Cline, etc.) to [Trove](https://github.com) via the **FastAPI backend**.
 
 | Design rule | Behavior |
 |-------------|----------|
@@ -37,7 +37,7 @@ The server uses **stdio** transport (stdin/stdout). Do not print logs to stdout 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `API_BASE_URL` | `http://localhost:8000` | Build Radar FastAPI base URL |
+| `API_BASE_URL` | `http://localhost:8000` | Trove FastAPI base URL |
 | `API_TIMEOUT_MS` | `30000` | HTTP timeout per request |
 
 Copy from repo root:
@@ -57,9 +57,9 @@ Use the **absolute path** to `dist/index.js` on your machine.
 ```json
 {
   "mcpServers": {
-    "build-radar": {
+    "trove": {
       "command": "node",
-      "args": ["/absolute/path/to/Build Radar/apps/mcp/dist/index.js"],
+      "args": ["/absolute/path/to/Trove/apps/mcp/dist/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:8000"
       }
@@ -77,9 +77,9 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 ```json
 {
   "mcpServers": {
-    "build-radar": {
+    "trove": {
       "command": "node",
-      "args": ["/absolute/path/to/Build Radar/apps/mcp/dist/index.js"],
+      "args": ["/absolute/path/to/Trove/apps/mcp/dist/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:8000"
       }
@@ -95,10 +95,10 @@ Add to your MCP config (e.g. `~/.claude/settings.json` or project `.mcp.json`):
 ```json
 {
   "mcpServers": {
-    "build-radar": {
+    "trove": {
       "type": "stdio",
       "command": "node",
-      "args": ["/absolute/path/to/Build Radar/apps/mcp/dist/index.js"],
+      "args": ["/absolute/path/to/Trove/apps/mcp/dist/index.js"],
       "env": {
         "API_BASE_URL": "http://localhost:8000"
       }
@@ -293,7 +293,7 @@ See also `examples/tool-examples.json` for copy-paste inputs/outputs.
 1. **`search_artifacts`** or **`find_similar_projects`** with the user’s project description  
 2. **`get_artifact_details`** on 1–3 promising UUIDs for setup commands and remix notes  
 3. **`recommend_stack`** if the user asks what stack similar builders use  
-4. Agent synthesizes a plan — Build Radar does not call an LLM
+4. Agent synthesizes a plan — Trove does not call an LLM
 
 ## Troubleshooting
 
@@ -302,7 +302,7 @@ See also `examples/tool-examples.json` for copy-paste inputs/outputs.
 | `API not reachable` on stderr | Start FastAPI; check `API_BASE_URL` |
 | Empty `results` | Run DB seed + optional embedding backfill |
 | MCP not listed in Cursor | Restart IDE; verify absolute path in config |
-| `401` / GitHub errors | N/A — MCP only hits Build Radar API |
+| `401` / GitHub errors | N/A — MCP only hits Trove API |
 
 ## Architecture
 

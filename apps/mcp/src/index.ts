@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build Radar MCP server — connects coding agents to the FastAPI backend.
+ * Trove MCP server — connects coding agents to the FastAPI backend.
  *
  * - No Postgres access
  * - No LLM calls
@@ -17,13 +17,13 @@ import { recommendStack } from "./tools/recommendStack.js";
 import { searchArtifacts } from "./tools/searchArtifacts.js";
 
 const server = new McpServer({
-  name: "build-radar",
+  name: "trove",
   version: "0.1.0",
 });
 
 server.tool(
   "search_artifacts",
-  `Search Build Radar for open-source projects, techniques, starter templates, APIs, models, MCP servers, coding-agent workflows, and implementation recipes.
+  `Search Trove for open-source projects, techniques, starter templates, APIs, models, MCP servers, coding-agent workflows, and implementation recipes.
 
 Use a full project-context query (what you are building, stack, goals). Returns structured artifacts with scores and why_relevant — no LLM reasoning in this tool.`,
   {
@@ -74,7 +74,7 @@ Constructs a search from project_description + optional stack/features. Returns 
 
 server.tool(
   "get_artifact_details",
-  "Fetch full Build Radar artifact by UUID: summary, remix steps, setup commands, stack tags, and scores.",
+  "Fetch full Trove artifact by UUID: summary, remix steps, setup commands, stack tags, and scores.",
   {
     artifact_id: z.string().uuid().describe("Artifact UUID from search results"),
   },
@@ -99,10 +99,10 @@ Frequency-based aggregation only — no LLM. Your agent should validate choices 
 async function main() {
   const apiOk = await checkApiHealth();
   if (apiOk) {
-    console.error(`[build-radar-mcp] Connected to API at ${getApiBaseUrl()}`);
+    console.error(`[trove-mcp] Connected to API at ${getApiBaseUrl()}`);
   } else {
     console.error(
-      `[build-radar-mcp] WARNING: API not reachable at ${getApiBaseUrl()} — start FastAPI first (uvicorn app.main:app --port 8000)`,
+      `[trove-mcp] WARNING: API not reachable at ${getApiBaseUrl()} — start FastAPI first (uvicorn app.main:app --port 8000)`,
     );
   }
 
@@ -111,6 +111,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("[build-radar-mcp] Fatal:", err);
+  console.error("[trove-mcp] Fatal:", err);
   process.exit(1);
 });
