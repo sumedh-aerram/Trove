@@ -4,101 +4,115 @@
 
 ### Describe what you're building. See the landscape of what to remix.
 
-Build Radar is a discovery engine for builders. You type what you're trying to make, and instead of a flat list of links it gives you an **interactive map of the real open-source projects, techniques, starter templates, MCP servers, and papers** you can actually reuse — ranked by how remixable they are for *your* project, not by how loud they trend.
+Build Radar is a discovery engine for builders. You type what you are trying to make, and instead of a flat list of links you get an **interactive map of real open-source projects, techniques, starter templates, MCP servers, and papers** you can actually reuse, ranked by how easy they are to remix into *your* project (not by how loud they trend).
 
-It's also the missing **data layer for coding agents**: the same search powers an MCP server, so agents in Cursor / Claude Code / Cline can pull remixable builds on demand.
+It is also a **data layer for AI coding agents**: the same search powers an MCP server, so agents in Cursor, Claude Code, or Cline can pull reusable builds on demand.
 
 </div>
 
 ---
 
+## In one line
+
+A live, always-growing catalog of buildable open-source work, with a search that understands what you are making and shows you the best things to fork.
+
+**Highlights**
+
+- 🔎 **Two-stage search** that finds candidates fast, then reranks the top ones with an AI model for accuracy.
+- 🗺️ **A map, not a list:** results render as a graph clustered by theme, closest to the center = best match.
+- 🔴 **Live crawlers** for GitHub, Hacker News, and arXiv run 24/7 in the background, so the index keeps growing on its own.
+- 🤖 **Agent-ready:** an MCP server lets coding agents query the exact same search.
+- ⚡ **Instant + free:** search reads a database in milliseconds and makes zero paid LLM calls.
+
+---
+
 ## The problem
 
-Starting something new, the hardest part usually isn't writing code — it's finding the 70% that already exists.
+When you start something new, the hardest part usually isn't writing code. It's finding the 70% that already exists.
 
-You want to build, say, an AI lecture summarizer with quizzes. Someone has already solved the transcription, the chunking, the quiz prompt, the auth, the billing. But finding their work means:
+Say you want to build an AI lecture summarizer with quizzes. Someone has already solved the transcription, the chunking, the quiz prompt, the auth, the billing. But finding their work means:
 
-- crawling GitHub stars (where "popular" means *old and huge*, not *useful to you*),
+- digging through GitHub stars (where "popular" usually means old and huge, not useful to you),
 - doomscrolling Hacker News and Twitter,
 - skimming arXiv,
 - and reading a hundred "Top 10 AI repos" posts that all list the same five hyped libraries.
 
-Then AI made it *worse*: everyone ships now, so the registries are flooded. General search ranks by **popularity and SEO**. What a builder actually needs is ranking by **remixability** — *can I pull this into my project this weekend?* Those are different questions, and nothing answers the second one.
+AI made this worse. Everyone ships now, so the registries are flooded. Normal search ranks by popularity and SEO. What a builder actually needs is ranking by **remixability**: can I pull this into my project this weekend? Those are different questions, and nothing answers the second one.
 
-**Build Radar answers the second one** — and shows you how the options relate, so you can pick a direction in 30 seconds instead of 3 hours of tabs.
+**Build Radar answers the second one**, and it shows how the options relate, so you can pick a direction in 30 seconds instead of 3 hours of open tabs.
 
-## The "aha"
+## What it feels like
 
-Type a real, messy, project-context query:
+Type a real, messy query like:
 
 > *"a RAG chrome extension that explains research papers, TypeScript preferred"*
 
-Build Radar returns a **landscape**, not a list:
+Build Radar gives you a **landscape**, not a list:
 
-- a node graph with your query at the center and matches orbiting it — **closer = more relevant**, clustered into themes (Projects, Templates, Agent/MCP tooling, Research, Libraries);
-- a **match-confidence score** for your query — if it's vague, it tells you and **suggests a sharper query you can run in one click**;
-- for any result: **why it's relevant to you**, what it's **about**, **how it helps**, **why it stands out**, the exact **how-to-start** commands, and the stack.
+- a node graph with your query in the center and matches around it. **Closer means more relevant.** Matches are grouped into themes (Projects, Templates, Agent/MCP tooling, Research, Libraries).
+- a **match-confidence score** for your query. If your query is vague, it says so and **suggests a sharper query you can run with one click**.
+- for any result: **why it fits you**, what it **is**, **how it helps**, **why it stands out**, the exact **commands to start**, and the tech stack.
 
-It indexes far more than repos — **starter templates, techniques, MCP servers, coding-agent workflows, architecture patterns, and papers** — the full surface of how things actually get built.
+It indexes far more than repos: starter templates, techniques, MCP servers, coding-agent workflows, architecture patterns, and papers.
 
 ## Why it's different
 
 **1. Ranked for remixability, not popularity.**
-A blended score — relevance to your project, remixability, quality, recency, *minus* a hype-risk penalty — plus an `underground` score that surfaces high-signal projects *before* they hit the front page. You get things you can use, not things that are merely viral.
+Each result gets a blended score from relevance to your project, remixability, quality, and recency, minus a hype-risk penalty. An "underground" score even surfaces strong projects before they go viral. You get things you can use, not things that are just trending.
 
 **2. A map, not a list.**
-Results render as an interactive relevance graph so you can see structure — which options are close to your intent, how they cluster, what the strongest matches are — instead of scrolling ten blue links.
+Results render as an interactive graph so you can see structure at a glance: which options are closest to your intent, how they cluster, and which are the strongest matches.
 
-**3. Search is instant because crawling never touches it.**
-Everything is pre-indexed. Embeddings and scores are computed at **ingestion**. A query is pure Postgres — full-text (`tsvector`) + vector (`pgvector` cosine) fused with Reciprocal Rank Fusion — returning in milliseconds. Crawlers run continuously in the **background** and never block a user. Freshness without latency.
+**3. The index is live and always growing.**
+Background crawlers for GitHub, Hacker News, and arXiv run continuously, 24/7, with no manual work. New builds get scored, embedded, and added on their own, and the home page shows the index growing in real time ("+N added today", "last new just now"). Crawling runs separately from search, so the catalog stays fresh without ever slowing a query down.
 
-**4. It speaks fluent agent.**
-A first-class **MCP server** exposes the *exact same* search API to coding agents. The agent gets clean structured JSON (titles, scores, remix notes, setup steps) and reasons on *its own* model. Build Radar makes **zero paid LLM calls** for discovery — it's the curated index agents query, not another wrapper around web search.
+**4. Two-stage search for accuracy.**
+First a fast stage casts a wide net (full-text + vector similarity). Then a smarter AI model (a cross-encoder) re-reads the top candidates against your query and reorders them so the best result lands first. This "retrieve then rerank" approach is how modern search and RAG systems work.
 
-**5. Project-context understanding, no LLM tax.**
-A rule-based intent layer pulls frameworks, tools, and goals from your sentence and enriches retrieval — so a "lecture summarizer with quizzes in Next.js + Supabase" finds the right starter even when those exact words aren't in its README.
+**5. It speaks fluent agent, with no paid LLM tax.**
+A first-class MCP server gives AI coding agents the exact same search through clean structured data. Build Radar makes zero paid LLM calls for discovery. It is the curated index agents query, not another wrapper around web search.
 
 ## Who it's for
 
-- **Vibe coders / indie hackers** starting a project who want a forkable head start, not a blank repo.
+- **Vibe coders and indie hackers** who want a forkable head start instead of a blank repo.
 - **Hackathon teams** who need to ship a demo this weekend.
-- **Coding agents** (via MCP) that need a queryable index of remixable builds.
+- **AI coding agents** (via MCP) that need a queryable index of reusable builds.
 
 ## How it works
 
 ```
-        rotating topic lists           relevance + quality gate          PostgreSQL
-GitHub ─▶  (a saved cursor sweeps  ─▶   embed → cosine vs topic     ─▶   + pgvector
-HN ─────▶   the full topic set so       + heuristics (drop noise)        UPSERT by
-arXiv ──▶    each run finds new)         ↓                                canonical_url
-                                         scores + embedding computed
-                                         AT INGEST (never at query time)
-                                                                          │
-                  Next.js web  ◀─┐                                        │
-                                 ├── GET /search  (reads only, no crawl) ◀┘
-                  MCP server  ◀──┘   FTS + pgvector + Reciprocal Rank Fusion
+   LIVE crawlers (24/7)            relevance + quality gate          PostgreSQL
+GitHub ─▶  a saved cursor rotates ─▶  embed + check it matches  ─▶   + pgvector
+HN ─────▶  through all topics so      the topic, drop the noise      UPSERT by URL
+arXiv ──▶  every run finds new        ↓                              (no duplicates)
+                                      scores + embedding are computed
+                                      AT INGEST, never at query time
+                                                                       │
+                  Next.js web  ◀─┐                                     │
+                                 ├── GET /search  (read only, no crawl) ◀┘
+                  MCP server  ◀──┘   full-text + vector + rerank
                   (coding agents)
 ```
 
-**The rule that makes it fast:** writers (crawlers) and readers (web, MCP) are fully decoupled. Heavy work happens once, at ingestion. Reads are cheap, identical across surfaces, and instant.
+**The rule that makes it fast:** the writers (crawlers) and the readers (web app, MCP) are fully separate. Heavy work happens once, when data is ingested. Reads are cheap, identical across both surfaces, and instant.
 
 ## The search pipeline
 
-**Two-stage retrieval (retrieve → rerank):**
+Build Radar uses **two-stage retrieval (retrieve, then rerank)**:
 
-1. **Project-intent extraction** — frameworks, tools, tags, project type (rule-based, no LLM).
-2. **Stage 1 — recall** — Postgres full-text (`ts_rank_cd`) + `pgvector` cosine ANN over local SentenceTransformers (`all-MiniLM-L6-v2`) embeddings, fused with **Reciprocal Rank Fusion**.
-3. **Metadata ranking** — relevance · remixability · quality · recency · underground − hype-risk.
-4. **Stage 2 — precision** — a **cross-encoder reranker** (`ms-marco-MiniLM-L-6`) rescues the top candidates by reading each (query, doc) pair jointly, then blends into the final order.
-5. **Explainability** — per-result `why_relevant`, key points, how-to-start; per-query match confidence + a one-click sharper-query suggestion.
+1. **Understand the query.** A lightweight rule-based layer pulls out frameworks, tools, and goals (no LLM).
+2. **Stage 1, recall.** Postgres full-text search and `pgvector` cosine similarity (over local embeddings) pull ~60 candidates and fuse them with Reciprocal Rank Fusion. Fast, and it rarely misses anything.
+3. **Metadata ranking.** Candidates are scored on relevance, remixability, quality, recency, and underground value, minus hype risk.
+4. **Stage 2, precision.** A cross-encoder reranker (`ms-marco-MiniLM-L-6`) re-reads the top candidates against the query and reorders them, then blends into the final ranking.
+5. **Explain it.** Every result includes why it is relevant and how to start; every query gets a confidence score and a one-click sharper-query suggestion.
 
-Measured with an **eval harness** (`apps/api/scripts/eval_search.py`) reporting recall@k / MRR / nDCG@10; stage-2 reranking improves nDCG@10 over stage-1 alone. Stage 1 returns in tens of ms; the cross-encoder reranks only the top-K, so warm queries stay well under a second.
+Quality is measured by an **eval harness** (`apps/api/scripts/eval_search.py`) that reports recall@k, MRR, and nDCG@10. Stage-2 reranking improves nDCG@10 over stage 1 alone. Stage 1 returns in tens of milliseconds, and the reranker only touches the top results, so warm searches stay well under a second.
 
 ## Quick start
 
 ```bash
-cp .env.example .env          # optional: set GITHUB_TOKEN for fuller, faster GitHub crawls
-docker compose up -d          # Postgres + pgvector, plus the always-on background crawler
+cp .env.example .env          # optional: add a GITHUB_TOKEN for faster, fuller GitHub crawls
+docker compose up -d          # starts Postgres + pgvector AND the always-on background crawler
 ```
 
 ```bash
@@ -113,12 +127,12 @@ uvicorn app.main:app --reload --port 8000
 # Web
 cd apps/web
 npm install
-npm run dev                   # http://localhost:3000
+npm run dev                   # open http://localhost:3000
 ```
 
-The index fills itself: the background crawler bootstraps from Hacker News, GitHub, and arXiv, then keeps adding on a short interval. The home page shows live index size, **+N added today**, and when the last new build landed — so you can watch it grow.
+That's it. The index fills itself: the moment the crawler starts it pulls from Hacker News, GitHub, and arXiv, then keeps adding new builds on a short interval. The home page shows the live count, how many were added today, and when the last new build landed, so you can literally watch it grow.
 
-> Want a fat index immediately on a fresh clone? Crawl for a while, then
+> Want a big index instantly on a fresh clone? Let it crawl for a while, then run
 > `python packages/db/export_seed_from_db.py` and commit `packages/db/seed.sql`.
 
 ## Connect a coding agent (MCP)
@@ -141,14 +155,34 @@ cd apps/mcp && npm install && npm run build
 
 Then ask your agent: *"Use Build Radar to find open-source repos for a RAG Chrome extension over research papers."* Tools: `search_artifacts`, `find_similar_projects`, `get_artifact_details`, `recommend_stack`. Full docs: **[apps/mcp/README.md](apps/mcp/README.md)**.
 
+## Live crawling, in detail
+
+The Docker `crawler` service runs continuously (`restart: unless-stopped`), so it survives restarts and needs nothing launched by hand. It is capped on CPU and memory so it never overwhelms your machine. Three things keep it adding genuinely new builds instead of re-scanning the same ones:
+
+- **Topic rotation.** A saved cursor advances every run, so successive crawls sweep the whole topic list (dozens of builder topics) rather than re-hitting the first few.
+- **A "newest" feed.** Hacker News is pulled both by relevance and by date, so fresh posts keep flowing in.
+- **Honest accounting.** Each run reports `new` vs `refreshed` separately, and the app shows real new additions (not re-touches).
+
+Run any job by hand too:
+
+```bash
+cd workers
+python run_scheduled.py hn        # Hacker News (top + newest)
+python run_scheduled.py github    # GitHub repos (set GITHUB_TOKEN for speed)
+python run_scheduled.py arxiv     # arXiv papers (newest first)
+python run_scheduled.py embeddings
+```
+
+Default cadence: Hacker News every ~5 min, GitHub every ~20 min, arXiv every ~3 h. Search **never** triggers a crawl.
+
 ## Monorepo layout
 
 ```
-apps/web/      Next.js 15 frontend — animated home, interactive landscape graph, detail
-apps/api/      FastAPI backend — hybrid search, ranking, landscape + confidence, stats
-apps/mcp/      TypeScript MCP server — calls the API, no DB, no LLM
-workers/       Crawlers (GitHub · HN · arXiv) + rotation cursor + daemon + embedding backfill
-packages/db/   PostgreSQL + pgvector schema, seed, and DB→seed exporter
+apps/web/      Next.js 15 frontend: animated home, interactive landscape graph, detail pages
+apps/api/      FastAPI backend: two-stage search, ranking, reranking, confidence, stats
+apps/mcp/      TypeScript MCP server: calls the API, no database, no LLM
+workers/       Live crawlers (GitHub, HN, arXiv) + rotation cursor + daemon + embedding backfill
+packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 ```
 
 ## API endpoints
@@ -156,61 +190,45 @@ packages/db/   PostgreSQL + pgvector schema, seed, and DB→seed exporter
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| GET | `/search?q=` | Hybrid search → ranked results, clusters, confidence, suggestion |
-| GET | `/artifacts` · `/artifacts/{id}` | List / filter / detail |
-| POST/DELETE | `/artifacts/{id}/star` | Star / unstar |
+| GET | `/search?q=` | Two-stage search: ranked results, clusters, confidence, suggestion |
+| GET | `/artifacts`, `/artifacts/{id}` | List, filter, detail |
+| POST/DELETE | `/artifacts/{id}/star` | Save / unsave |
 | GET | `/stats` | Index size, embeddings %, builds added today, crawl freshness |
-| GET | `/profiles/{username}` · `/leaderboard` | Profiles |
-
-## Crawling & freshness
-
-The Docker `crawler` daemon runs continuously (`restart: unless-stopped`) — nothing to launch — and is CPU/RAM-capped so it won't cook the machine. A **rotation cursor** advances each run, so successive crawls sweep the whole topic set instead of re-hitting the same queries, and HN pulls a **newest-stories feed** so it keeps finding genuinely new builds. You can also run jobs by hand:
-
-```bash
-cd workers
-python run_scheduled.py hn        # Hacker News (top + newest)
-python run_scheduled.py github    # repos (set GITHUB_TOKEN for speed)
-python run_scheduled.py arxiv     # papers (newest first)
-python run_scheduled.py embeddings
-```
-
-Default cadence: HN ~5m · GitHub ~20m · arXiv ~3h. Search **never** triggers a crawl.
+| GET | `/profiles/{username}`, `/leaderboard` | Profiles |
 
 ## Tech stack
 
 | Layer | Choice |
 |-------|--------|
-| Frontend | Next.js 15 · TypeScript · Tailwind |
-| Backend | FastAPI · asyncpg |
-| Data | PostgreSQL + pgvector (FTS + HNSW) |
+| Frontend | Next.js 15, TypeScript, Tailwind |
+| Backend | FastAPI, asyncpg |
+| Data | PostgreSQL + pgvector (full-text + HNSW vector index) |
 | Embeddings | SentenceTransformers `all-MiniLM-L6-v2` (local, no paid LLM) |
 | Reranker | Cross-encoder `ms-marco-MiniLM-L-6-v2` (local) |
 | Agent layer | Model Context Protocol (TypeScript) |
-| Crawlers | Python (GitHub REST · HN Algolia · arXiv API) |
+| Crawlers | Python (GitHub REST, HN Algolia, arXiv API) |
 
 ## Status
 
 | Capability | State |
 |------------|-------|
-| Two-stage retrieval: hybrid FTS + pgvector ANN + RRF, then cross-encoder reranking | ✅ |
-| Eval harness (recall@k · MRR · nDCG@10) | ✅ |
-| Interactive relevance-graph "landscape" UI | ✅ |
+| Two-stage retrieval: full-text + pgvector + RRF, then cross-encoder reranking | ✅ |
+| Eval harness (recall@k, MRR, nDCG@10) | ✅ |
+| Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | ✅ |
+| Interactive relevance-graph UI | ✅ |
 | Query match-confidence + one-click sharper-query suggestion | ✅ |
-| Per-result why_relevant / about / how-it-helps / stands-out / how-to-start | ✅ |
+| Per-result why-relevant / about / how-it-helps / stands-out / how-to-start | ✅ |
 | Remixability / quality / hype-risk / underground scoring | ✅ |
-| Always-on crawler daemon with rotation + new-vs-refreshed accounting | ✅ |
 | MCP server (search, similar, details, recommend-stack) | ✅ |
-| Embedding backfill + DB→seed export | ✅ |
-| Hugging Face / RSS crawlers | 🔲 stubbed |
-| Hosted deployment + real auth | 🔲 next |
+| Hugging Face / RSS crawlers | 🔲 planned |
+| Hosted deployment + real auth | 🔲 planned |
 
 ## Where it goes next
 
 - One-command hosted deploy (managed Postgres + API) so a whole team shares one fresh index.
-- Hugging Face + RSS crawlers for models and builder blogs.
-- Search analytics from `search_events` to tune ranking on real queries.
-- Optional live-scan fallback when the index has a genuine gap.
+- Hugging Face and RSS crawlers for models and builder blogs.
+- Search analytics from real queries to keep tuning ranking.
 
 ## License
 
-MIT — add a `LICENSE` file before open-sourcing.
+MIT. Add a `LICENSE` file before open-sourcing.
