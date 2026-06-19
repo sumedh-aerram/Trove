@@ -339,7 +339,7 @@ async def main_async(args: argparse.Namespace) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Build Radar GitHub crawler")
+    p = argparse.ArgumentParser(description="Trove GitHub crawler")
     p.add_argument("--query", help="Run a single starter term instead of the full list")
     p.add_argument("--per-page", type=int, default=30, help="Results per search page")
     p.add_argument("--max-pages", type=int, default=1, help="Pages per query")

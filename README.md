@@ -1,10 +1,10 @@
 <div align="center">
 
-# Build Radar
+# Trove
 
 ### Describe what you're building. See the landscape of what to remix.
 
-Build Radar is a discovery engine for builders. You type what you are trying to make, and instead of a flat list of links you get an **interactive map of real open-source projects, techniques, starter templates, MCP servers, and papers** you can actually reuse, ranked by how easy they are to remix into *your* project (not by how loud they trend).
+Trove is a discovery engine for builders. You type what you are trying to make, and instead of a flat list of links you get an **interactive map of real open-source projects, techniques, starter templates, MCP servers, and papers** you can actually reuse, ranked by how easy they are to remix into *your* project (not by how loud they trend).
 
 It is also a **data layer for AI coding agents**: the same search powers an MCP server, so agents in Cursor, Claude Code, or Cline can pull reusable builds on demand.
 
@@ -39,7 +39,7 @@ Say you want to build an AI lecture summarizer with quizzes. Someone has already
 
 AI made this worse. Everyone ships now, so the registries are flooded. Normal search ranks by popularity and SEO. What a builder actually needs is ranking by **remixability**: can I pull this into my project this weekend? Those are different questions, and nothing answers the second one.
 
-**Build Radar answers the second one**, and it shows how the options relate, so you can pick a direction in 30 seconds instead of 3 hours of open tabs.
+**Trove answers the second one**, and it shows how the options relate, so you can pick a direction in 30 seconds instead of 3 hours of open tabs.
 
 ## What it feels like
 
@@ -47,7 +47,7 @@ Type a real, messy query like:
 
 > *"a RAG chrome extension that explains research papers, TypeScript preferred"*
 
-Build Radar gives you a **landscape**, not a list:
+Trove gives you a **landscape**, not a list:
 
 - a node graph with your query in the center and matches around it. **Closer means more relevant.** Matches are grouped into themes (Projects, Templates, Agent/MCP tooling, Research, Libraries).
 - a **match-confidence score** for your query. If your query is vague, it says so and **suggests a sharper query you can run with one click**.
@@ -70,7 +70,7 @@ Background crawlers for GitHub, Hacker News, and arXiv run continuously, 24/7, w
 First a fast stage casts a wide net (full-text + vector similarity). Then a smarter AI model (a cross-encoder) re-reads the top candidates against your query and reorders them so the best result lands first. This "retrieve then rerank" approach is how modern search and RAG systems work.
 
 **5. It speaks fluent agent, with no paid LLM tax.**
-A first-class MCP server gives AI coding agents the exact same search through clean structured data. Build Radar makes zero paid LLM calls for discovery. It is the curated index agents query, not another wrapper around web search.
+A first-class MCP server gives AI coding agents the exact same search through clean structured data. Trove makes zero paid LLM calls for discovery. It is the curated index agents query, not another wrapper around web search.
 
 ## Who it's for
 
@@ -98,7 +98,7 @@ arXiv ──▶  every run finds new        ↓                              (no
 
 ## The search pipeline
 
-Build Radar uses **two-stage retrieval (retrieve, then rerank)**:
+Trove uses **two-stage retrieval (retrieve, then rerank)**:
 
 1. **Understand the query.** A lightweight rule-based layer pulls out frameworks, tools, and goals (no LLM).
 2. **Stage 1, recall.** Postgres full-text search and `pgvector` cosine similarity (over local embeddings) pull ~60 candidates and fuse them with Reciprocal Rank Fusion. Fast, and it rarely misses anything.
@@ -144,16 +144,16 @@ cd apps/mcp && npm install && npm run build
 ```json
 {
   "mcpServers": {
-    "build-radar": {
+    "trove": {
       "command": "node",
-      "args": ["/absolute/path/to/Build Radar/apps/mcp/dist/index.js"],
+      "args": ["/absolute/path/to/Trove/apps/mcp/dist/index.js"],
       "env": { "API_BASE_URL": "http://localhost:8000" }
     }
   }
 }
 ```
 
-Then ask your agent: *"Use Build Radar to find open-source repos for a RAG Chrome extension over research papers."* Tools: `search_artifacts`, `find_similar_projects`, `get_artifact_details`, `recommend_stack`. Full docs: **[apps/mcp/README.md](apps/mcp/README.md)**.
+Then ask your agent: *"Use Trove to find open-source repos for a RAG Chrome extension over research papers."* Tools: `search_artifacts`, `find_similar_projects`, `get_artifact_details`, `recommend_stack`. Full docs: **[apps/mcp/README.md](apps/mcp/README.md)**.
 
 ## Live crawling, in detail
 

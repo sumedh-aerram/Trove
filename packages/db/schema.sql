@@ -1,4 +1,4 @@
--- Build Radar schema
+-- Trove schema
 -- PostgreSQL + pgvector. Supabase-compatible (uses gen_random_uuid via pgcrypto).
 
 create extension if not exists vector;

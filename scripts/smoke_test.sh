@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke tests for Build Radar API (requires API on :8000 and seeded DB).
+# Smoke tests for Trove API (requires API on :8000 and seeded DB).
 set -euo pipefail
 
 API="${API_BASE_URL:-http://localhost:8000}"

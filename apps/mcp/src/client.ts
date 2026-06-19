@@ -1,5 +1,5 @@
 /**
- * HTTP client for the Build Radar FastAPI backend.
+ * HTTP client for the Trove FastAPI backend.
  * Uses the same GET /search contract as apps/web (packages/shared/searchQuery.ts).
  */
 import { buildSearchPath, type SearchQueryInput } from "./searchQuery.js";
@@ -24,12 +24,12 @@ export async function apiGet<T>(path: string): Promise<T> {
     });
     if (!res.ok) {
       const body = await res.text();
-      throw new Error(`Build Radar API ${res.status} ${res.statusText}: ${body.slice(0, 400)}`);
+      throw new Error(`Trove API ${res.status} ${res.statusText}: ${body.slice(0, 400)}`);
     }
     return (await res.json()) as T;
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Build Radar API timeout after ${REQUEST_TIMEOUT_MS}ms: ${url}`);
+      throw new Error(`Trove API timeout after ${REQUEST_TIMEOUT_MS}ms: ${url}`);
     }
     throw err;
   } finally {

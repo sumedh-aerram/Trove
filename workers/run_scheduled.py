@@ -74,7 +74,7 @@ ASYNC_RUNNERS = {
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run a Build Radar crawl job")
+    parser = argparse.ArgumentParser(description="Run a Trove crawl job")
     parser.add_argument("job", nargs="?", choices=list(CRAWL_JOBS.keys()))
     parser.add_argument("--list", action="store_true", help="List available jobs")
     args = parser.parse_args()
