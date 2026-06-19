@@ -18,11 +18,11 @@ A live, always-growing catalog of buildable open-source work, with a search that
 
 **Highlights**
 
-- 🔎 **Two-stage search** that finds candidates fast, then reranks the top ones with an AI model for accuracy.
-- 🗺️ **A map, not a list:** results render as a graph clustered by theme, closest to the center = best match.
-- 🔴 **Live crawlers** for GitHub, Hacker News, and arXiv run 24/7 in the background, so the index keeps growing on its own.
-- 🤖 **Agent-ready:** an MCP server lets coding agents query the exact same search.
-- ⚡ **Instant + free:** search reads a database in milliseconds and makes zero paid LLM calls.
+- **Two-stage search** that finds candidates fast, then reranks the top ones with an AI model for accuracy.
+- **A map, not a list:** results render as a graph clustered by theme, closest to the center is the best match.
+- **Live crawlers** for GitHub, Hacker News, and arXiv run 24/7 in the background, so the index keeps growing on its own.
+- **Agent ready:** an MCP server lets coding agents query the exact same search.
+- **Instant and free:** search reads a database in milliseconds and makes zero paid LLM calls.
 
 ---
 
@@ -212,16 +212,16 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 
 | Capability | State |
 |------------|-------|
-| Two-stage retrieval: full-text + pgvector + RRF, then cross-encoder reranking | ✅ |
-| Eval harness (recall@k, MRR, nDCG@10) | ✅ |
-| Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | ✅ |
-| Interactive relevance-graph UI | ✅ |
-| Query match-confidence + one-click sharper-query suggestion | ✅ |
-| Per-result why-relevant / about / how-it-helps / stands-out / how-to-start | ✅ |
-| Remixability / quality / hype-risk / underground scoring | ✅ |
-| MCP server (search, similar, details, recommend-stack) | ✅ |
-| Hugging Face / RSS crawlers | 🔲 planned |
-| Hosted deployment + real auth | 🔲 planned |
+| Two-stage retrieval: full-text + pgvector + RRF, then cross-encoder reranking | Done |
+| Eval harness (recall@k, MRR, nDCG@10) | Done |
+| Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | Done |
+| Interactive relevance-graph UI | Done |
+| Query match-confidence + one-click sharper-query suggestion | Done |
+| Per-result why-relevant / about / how-it-helps / stands-out / how-to-start | Done |
+| Remixability / quality / hype-risk / underground scoring | Done |
+| MCP server (search, similar, details, recommend-stack) | Done |
+| Hugging Face / RSS crawlers | Planned |
+| Hosted deployment and real auth | Planned |
 
 ## Where it goes next
 
