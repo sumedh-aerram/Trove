@@ -30,6 +30,27 @@ export interface Artifact {
   popularity_score?: number;
   why_relevant?: string;
   final_score?: number;
+  // Landscape fields
+  relevance?: number;
+  relevance_pct?: number;
+  confidence?: string;
+  cluster_id?: string;
+  cluster_label?: string;
+  headline?: string;
+  key_points?: string[];
+  use_case?: string;
+  simple_implementation?: string;
+  start_steps?: string[];
+  top_rank?: number;
+  about?: string;
+  how_it_helps?: string;
+  stands_out?: string[];
+}
+
+export interface LandscapeCluster {
+  id: string;
+  label: string;
+  count: number;
 }
 
 export interface SearchResponse {
@@ -37,6 +58,11 @@ export interface SearchResponse {
   intent: Record<string, unknown>;
   results: Artifact[];
   total: number;
+  clusters?: LandscapeCluster[];
+  landscape_summary?: string;
+  query_confidence?: number;
+  query_advice?: string;
+  suggested_query?: string;
 }
 
 export interface ArtifactListResponse {

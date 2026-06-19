@@ -15,6 +15,7 @@ import logging
 import os
 import sys
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 WORKERS_ROOT = Path(__file__).resolve().parents[1]
@@ -30,9 +31,12 @@ from common.db import (  # noqa: E402
     start_crawl_run,
     upsert_artifact,
 )
+from common.cursor import rotate, window_size  # noqa: E402
 from common.github import repo_to_artifact  # noqa: E402
 from common.github_client import GitHubClient, GitHubRateLimitError  # noqa: E402
 from common.paths import API_ROOT  # noqa: E402
+from common.relevance import embed_query, heuristic_quality_ok, relevance_ok  # noqa: E402
+from common.topics import GITHUB_QUERIES  # noqa: E402
 
 sys.path.insert(0, str(API_ROOT))
 from app.utils.urls import canonicalize_url  # noqa: E402
@@ -69,8 +73,12 @@ STARTER_QUERIES: list[str] = [
     "Cursor rules",
 ]
 
-# GitHub search qualifiers (recent, not mega-hyped).
-QUALIFIERS = "pushed:>2025-01-01 stars:<5000"
+# GitHub search qualifiers: recent + real-but-underground (min signal, not mega-hyped).
+_RECENT_SINCE = (datetime.now(timezone.utc) - timedelta(days=420)).strftime("%Y-%m-%d")
+QUALIFIERS = f"pushed:>{_RECENT_SINCE} stars:3..8000"
+
+# Skip repos with effectively no signal before we pay for a README fetch.
+MIN_PREFILTER_STARS = int(os.getenv("CRAWL_GITHUB_MIN_STARS", "3"))
 
 
 def build_search_query(term: str) -> str:
@@ -79,6 +87,19 @@ def build_search_query(term: str) -> str:
     if term.startswith('"'):
         return f"{term} {QUALIFIERS}"
     return f'"{term}" {QUALIFIERS}'
+
+
+def _prefilter_repo(repo: dict) -> bool:
+    """Cheap gate before the expensive README fetch + embedding."""
+    if repo.get("archived") or repo.get("disabled"):
+        return False
+    if repo.get("fork"):
+        return False
+    stars = int(repo.get("stargazers_count") or 0)
+    has_desc = bool((repo.get("description") or "").strip())
+    if stars < MIN_PREFILTER_STARS and not has_desc:
+        return False
+    return True
 
 
 @dataclass
@@ -90,6 +111,7 @@ class CrawlStats:
     updated: int = 0
     errors: int = 0
     readme_missing: int = 0
+    skipped_irrelevant: int = 0
     seen_canonical: set[str] = field(default_factory=set)
 
 
@@ -100,6 +122,7 @@ async def process_repo(
     stats: CrawlStats,
     *,
     dry_run: bool,
+    query_embedding=None,
 ) -> None:
     full_name = repo.get("full_name")
     if not full_name:
@@ -115,6 +138,11 @@ async def process_repo(
         return
     stats.seen_canonical.add(canonical)
 
+    # Cheap gate before paying for the README fetch + embedding.
+    if not _prefilter_repo(repo):
+        stats.skipped_irrelevant += 1
+        return
+
     try:
         readme = await gh.fetch_readme(full_name)
         if not readme:
@@ -123,13 +151,24 @@ async def process_repo(
         artifact = repo_to_artifact(repo, readme)
         artifact["canonical_url"] = canonical
 
+        # Quality + semantic relevance gate: keep the index on-topic.
+        if not heuristic_quality_ok(artifact):
+            stats.skipped_irrelevant += 1
+            return
+        ok, score = relevance_ok(artifact, query_embedding)
+        if not ok:
+            stats.skipped_irrelevant += 1
+            logger.debug("Skip off-topic %s (rel=%.3f)", full_name, score)
+            return
+
         if dry_run:
             logger.info(
-                "[dry-run] %s type=%s quality=%.0f remix=%.0f",
+                "[dry-run] %s type=%s quality=%.0f remix=%.0f rel=%.2f",
                 full_name,
                 artifact["artifact_type"],
                 artifact.get("quality_score", 0),
                 artifact.get("remixability_score", 0),
+                score,
             )
             return
 
@@ -166,6 +205,9 @@ async def run_search_query(
     query = build_search_query(term)
     logger.info("=== Search: %s ===", query)
 
+    # Embed the bare term once; reused to gate every candidate in this query.
+    query_embedding = embed_query(term.strip().strip('"'))
+
     async with pool.acquire() as conn:
         run_id = await start_crawl_run(conn, query)
         found = 0
@@ -197,7 +239,9 @@ async def run_search_query(
                     stats.repos_seen += 1
                     before_ins = stats.inserted
                     before_upd = stats.updated
-                    await process_repo(gh, conn, repo, stats, dry_run=dry_run)
+                    await process_repo(
+                        gh, conn, repo, stats, dry_run=dry_run, query_embedding=query_embedding
+                    )
                     if stats.inserted > before_ins:
                         inserted += 1
                     if stats.updated > before_upd:
@@ -251,9 +295,13 @@ async def main_async(args: argparse.Namespace) -> None:
     else:
         logger.info("Using GITHUB_TOKEN for authenticated GitHub API access.")
 
-    queries = [args.query] if args.query else STARTER_QUERIES
-    if args.limit_queries:
-        queries = queries[: args.limit_queries]
+    if args.query:
+        queries = [args.query]
+    elif args.limit_queries:
+        queries = STARTER_QUERIES[: args.limit_queries]
+    else:
+        # Rotate a window across the full query set so each run covers new ground.
+        queries = rotate("github", GITHUB_QUERIES, window_size("GITHUB_WINDOW", 6))
 
     stats = CrawlStats()
     pool = await get_pool()
@@ -285,6 +333,7 @@ async def main_async(args: argparse.Namespace) -> None:
     logger.info("  skipped_dup_in_run: %s", stats.repos_skipped_dup)
     logger.info("  inserted:           %s", stats.inserted)
     logger.info("  updated:            %s", stats.updated)
+    logger.info("  skipped_irrelevant: %s", stats.skipped_irrelevant)
     logger.info("  readme_missing:     %s", stats.readme_missing)
     logger.info("  errors:             %s", stats.errors)
 

@@ -24,5 +24,12 @@ npm-debug.log*
 .cache/
 .hf_cache/
 
+# Crawler runtime state
+.crawl_cursor.json
+workers/.crawl_cursor.json
+
+# Playwright artifacts
+.playwright-mcp/
+
 # OS
 .DS_Store

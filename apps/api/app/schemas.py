@@ -64,6 +64,27 @@ class SearchResultOut(ArtifactOut):
     why_relevant: str = ""
     final_score: float = 0
     project_relevance_score: float = 0
+    # Landscape fields (populated by landscape_service).
+    relevance: float = 0
+    relevance_pct: int = 0
+    confidence: str = ""
+    cluster_id: str = ""
+    cluster_label: str = ""
+    headline: str = ""
+    key_points: list[str] = Field(default_factory=list)
+    use_case: str = ""
+    simple_implementation: str = ""
+    start_steps: list[str] = Field(default_factory=list)
+    top_rank: int = 999
+    about: str = ""
+    how_it_helps: str = ""
+    stands_out: list[str] = Field(default_factory=list)
+
+
+class LandscapeCluster(BaseModel):
+    id: str
+    label: str
+    count: int
 
 
 class SearchResponse(BaseModel):
@@ -71,6 +92,11 @@ class SearchResponse(BaseModel):
     intent: dict[str, Any] = Field(default_factory=dict)
     results: list[SearchResultOut]
     total: int
+    clusters: list[LandscapeCluster] = Field(default_factory=list)
+    landscape_summary: str = ""
+    query_confidence: int = 0
+    query_advice: str = ""
+    suggested_query: str = ""
 
 
 class StarRequest(BaseModel):

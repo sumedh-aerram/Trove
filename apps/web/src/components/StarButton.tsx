@@ -9,7 +9,7 @@ type Props = {
 };
 
 export function StarButton({ artifactId, compact = false }: Props) {
-  const [username, setUsername] = useState("vibecoder");
+  const username = "vibecoder";
   const [starred, setStarred] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,11 +38,11 @@ export function StarButton({ artifactId, compact = false }: Props) {
         type="button"
         onClick={toggle}
         disabled={loading}
-        title={starred ? "Unstar" : "Star"}
-        className={`rounded px-2 py-0.5 text-xs ${
+        title={starred ? "Unsave" : "Save"}
+        className={`rounded-md px-2 py-0.5 text-xs transition-colors ${
           starred
-            ? "bg-amber-600/80 text-white"
-            : "border border-slate-600 text-slate-400 hover:border-amber-600 hover:text-amber-400"
+            ? "border border-[var(--line)] text-[var(--ink)]"
+            : "border border-[var(--line)] text-[var(--muted)] hover:text-[var(--ink)]"
         }`}
       >
         {starred ? "★" : "☆"}
@@ -51,24 +51,16 @@ export function StarButton({ artifactId, compact = false }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <input
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
-        placeholder="username"
-      />
+    <div className="flex items-center gap-2">
       <button
         type="button"
         onClick={toggle}
         disabled={loading}
-        className={`rounded px-3 py-1 text-sm text-white disabled:opacity-50 ${
-          starred ? "bg-slate-600 hover:bg-slate-500" : "bg-amber-600 hover:bg-amber-500"
-        }`}
+        className="rounded-md border border-[var(--line)] px-3 py-1 text-sm text-[var(--muted)] transition-colors hover:text-[var(--ink)] disabled:opacity-50"
       >
-        {loading ? "…" : starred ? "Unstar" : "Star"}
+        {loading ? "…" : starred ? "★ saved" : "☆ save"}
       </button>
-      {error && <span className="text-xs text-red-400">{error}</span>}
+      {error && <span className="text-xs text-[var(--muted)]">{error}</span>}
     </div>
   );
 }

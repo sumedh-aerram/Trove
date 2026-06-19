@@ -7,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Query
 from ..config import get_settings
 from ..schemas import SearchResponse, SearchResultOut
 from ..services.background_crawl import maybe_refresh_index
+from ..services.landscape_service import build_landscape
 from ..services.search_service import hybrid_search
 
 router = APIRouter(tags=["search"])
@@ -40,10 +41,17 @@ async def search(
     settings = get_settings()
     if settings.background_crawl_on_search:
         background_tasks.add_task(maybe_refresh_index)
+
+    landscape = build_landscape(result["query"], result["intent"], result["results"])
     results = [SearchResultOut(**r) for r in result["results"]]
     return SearchResponse(
         query=result["query"],
         intent=result["intent"],
         results=results,
         total=result["total"],
+        clusters=landscape["clusters"],
+        landscape_summary=landscape["summary"],
+        query_confidence=landscape["query_confidence"],
+        query_advice=landscape["query_advice"],
+        suggested_query=landscape["suggested_query"],
     )

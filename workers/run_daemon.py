@@ -61,7 +61,7 @@ def main() -> None:
     _maybe_bootstrap()
 
     last_run: dict[str, float] = {name: 0.0 for name in DAEMON_JOBS}
-    tick_seconds = int(os.getenv("CRAWL_DAEMON_TICK_SECONDS", "15"))
+    tick_seconds = int(os.getenv("CRAWL_DAEMON_TICK_SECONDS", "30"))
 
     while True:
         now = time.time()

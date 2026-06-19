@@ -32,6 +32,9 @@ export interface IndexStats {
   embeddings_count: number;
   last_crawl_at: string | null;
   last_updated_at?: string | null;
+  last_new_at?: string | null;
+  added_last_hour?: number;
+  added_today?: number;
   crawl_by_source: Record<string, string | null>;
   search_mode: string;
   crawl_in_progress?: boolean;

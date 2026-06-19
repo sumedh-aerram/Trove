@@ -22,13 +22,13 @@ class Settings(BaseSettings):
 
     web_base_url: str = "http://localhost:3000"
 
-    # Background indexing: daemon/cron does heavy lifting; search stays DB-only.
-    # After each search: queue a fast HN refresh (never blocks the response).
-    background_crawl_on_search: bool = True
+    # Background indexing is handled by the always-on crawler daemon, so search
+    # never spawns crawls (keeps queries fast and the CPU cool).
+    background_crawl_on_search: bool = False
     background_crawl_enabled: bool = True
-    background_crawl_stale_minutes: int = 1
-    background_crawl_github_stale_minutes: int = 5
-    background_crawl_cooldown_minutes: int = 1
+    background_crawl_stale_minutes: int = 30
+    background_crawl_github_stale_minutes: int = 60
+    background_crawl_cooldown_minutes: int = 30
 
     bootstrap_crawl_on_start: bool = False
     bootstrap_min_artifacts: int = 40

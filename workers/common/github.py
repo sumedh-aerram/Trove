@@ -1,9 +1,14 @@
 """Map GitHub repository JSON + README into a BuildArtifact dict."""
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from typing import Any
+
+# Only parse the top of the README. The signal we extract (first paragraph,
+# stack, setup commands) lives near the top, and capping keeps ingest fast.
+README_PARSE_LIMIT = int(os.getenv("CRAWL_README_PARSE_LIMIT", "8000"))
 
 from .paths import *  # noqa: F403 — ensures apps/api on path
 
@@ -85,6 +90,9 @@ def repo_to_artifact(repo: dict[str, Any], readme: str = "") -> dict[str, Any]:
     """Convert GitHub search/repo API payload + README into a BuildArtifact dict."""
     full_name = repo.get("full_name") or repo.get("name", "unknown/repo")
     description = (repo.get("description") or "").strip()
+    # Cap parse window for latency; keep a slightly larger slice for raw storage.
+    raw_readme = readme[: README_PARSE_LIMIT * 3] if readme else ""
+    readme = readme[:README_PARSE_LIMIT] if readme else ""
     cleaned = clean_text(readme)
     inferred = infer_fields_from_text(full_name, description, readme)
 
@@ -128,7 +136,7 @@ def repo_to_artifact(repo: dict[str, Any], readme: str = "") -> dict[str, Any]:
         "canonical_url": canonicalize_url(repo.get("html_url")),
         "author_name": (repo.get("owner") or {}).get("login"),
         "author_url": (repo.get("owner") or {}).get("html_url"),
-        "raw_text": readme[:50_000] if readme else None,
+        "raw_text": raw_readme or None,
         "clean_text": cleaned[:20_000] if cleaned else None,
         "summary": summary,
         "what_it_helps_build": f"Helps you build: {what_build}" if not what_build.startswith("Helps") else what_build,

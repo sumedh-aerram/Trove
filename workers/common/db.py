@@ -114,7 +114,9 @@ async def upsert_artifact(
 
     if existing:
         # values[5] is canonical_url — immutable dedupe key, not updated.
-        update_vals = values[:5] + values[6:]
+        update_vals = list(values[:5] + values[6:])
+        # Keep the row's existing slug; re-deriving it can collide with another row.
+        update_vals[1] = existing["slug"]
         await conn.execute(
             """
             UPDATE artifacts SET

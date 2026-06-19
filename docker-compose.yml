@@ -7,6 +7,9 @@ services:
       dockerfile: workers/Dockerfile
     container_name: build_radar_crawler
     restart: unless-stopped
+    # Cap CPU/RAM so background indexing never cooks the machine.
+    cpus: ${CRAWLER_CPUS:-1.5}
+    mem_limit: ${CRAWLER_MEM:-2g}
     depends_on:
       postgres:
         condition: service_healthy
@@ -16,6 +19,10 @@ services:
       BOOTSTRAP_MIN_ARTIFACTS: ${BOOTSTRAP_MIN_ARTIFACTS:-40}
       BOOTSTRAP_GITHUB_QUERY_LIMIT: ${BOOTSTRAP_GITHUB_QUERY_LIMIT:-7}
       SKIP_BOOTSTRAP: ${SKIP_BOOTSTRAP:-}
+      # Keep CPU use modest: the embedding model stays single/low-threaded.
+      OMP_NUM_THREADS: ${CRAWLER_THREADS:-2}
+      MKL_NUM_THREADS: ${CRAWLER_THREADS:-2}
+      TOKENIZERS_PARALLELISM: "false"
     volumes:
       - ./workers:/app/workers
       - ./apps/api:/app/apps/api

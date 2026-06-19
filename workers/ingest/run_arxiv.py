@@ -17,19 +17,13 @@ from dotenv import load_dotenv
 load_dotenv(WORKERS_ROOT.parent / ".env")
 
 from common.arxiv import arxiv_entry_to_artifact  # noqa: E402
+from common.cursor import rotate, window_size  # noqa: E402
 from common.db import get_pool, upsert_artifact  # noqa: E402
+from common.relevance import embed_query, passes  # noqa: E402
+from common.topics import ARXIV_CATEGORIES, ARXIV_TOPICS  # noqa: E402
 
-ARXIV_API = "http://export.arxiv.org/api/query"
-
-TOPICS = [
-    "code generation software engineering",
-    "repository-level code generation",
-    "automated program repair",
-    "retrieval augmented generation RAG",
-    "multimodal agents",
-    "AI coding assistants",
-    "efficient inference LLM",
-]
+# Dedicated harvesting host (arXiv asks programmatic access to use export.*).
+ARXIV_API = "https://export.arxiv.org/api/query"
 
 
 def _parse_feed(xml_text: str) -> list[dict]:
@@ -47,31 +41,58 @@ def _parse_feed(xml_text: str) -> list[dict]:
     return entries
 
 
-async def crawl_topic(pool, topic: str) -> tuple[int, int]:
-    found = inserted = 0
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.get(
-            ARXIV_API,
-            params={"search_query": f"all:{topic}", "start": 0, "max_results": 15},
-        )
-        resp.raise_for_status()
-        entries = _parse_feed(resp.text)
+def _build_query(topic: str, categories: list[str]) -> str:
+    cat = " OR ".join(f"cat:{c}" for c in categories)
+    return f"all:{topic} AND ({cat})"
 
+
+async def crawl_topic(pool, client: httpx.AsyncClient, topic: str) -> tuple[int, int]:
+    found = inserted = 0
+    # Newest first for freshness; bias to builder-relevant CS categories.
+    resp = await client.get(
+        ARXIV_API,
+        params={
+            "search_query": _build_query(topic, ARXIV_CATEGORIES),
+            "start": 0,
+            "max_results": 25,
+            "sortBy": "submittedDate",
+            "sortOrder": "descending",
+        },
+    )
+    resp.raise_for_status()
+    entries = _parse_feed(resp.text)
+
+    updated = 0
+    query_embedding = embed_query(topic)
     async with pool.acquire() as conn:
         for entry in entries:
             found += 1
             artifact = arxiv_entry_to_artifact(entry)
-            if await upsert_artifact(conn, artifact):
+            ok, _ = passes(artifact, query_embedding)
+            if not ok:
+                continue
+            res = await upsert_artifact(conn, artifact)
+            if res == "inserted":
                 inserted += 1
-    return found, inserted
+            elif res == "updated":
+                updated += 1
+    return found, inserted, updated
 
 
 async def main() -> None:
     pool = await get_pool()
-    for topic in TOPICS:
-        print(f"arXiv: {topic}")
-        found, inserted = await crawl_topic(pool, topic)
-        print(f"  found={found} inserted={inserted}")
+    topics = rotate("arxiv", ARXIV_TOPICS, window_size("ARXIV_WINDOW", 5))
+    total_ins = total_upd = 0
+    async with httpx.AsyncClient(timeout=60.0, headers={"User-Agent": "BuildRadar/0.1"}) as client:
+        for topic in topics:
+            print(f"arXiv: {topic}")
+            found, inserted, updated = await crawl_topic(pool, client, topic)
+            total_ins += inserted
+            total_upd += updated
+            print(f"  found={found} new={inserted} refreshed={updated}")
+            # arXiv asks for a ~1s pause between programmatic requests.
+            await asyncio.sleep(1.2)
+    print(f"arXiv run complete: +{total_ins} NEW, {total_upd} refreshed across {len(topics)} topics")
     await pool.close()
 
 

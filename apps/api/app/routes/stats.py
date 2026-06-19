@@ -19,7 +19,11 @@ async def get_stats() -> dict:
           COUNT(*)::int AS artifact_count,
           COUNT(embedding)::int AS embeddings_count,
           MAX(last_crawled_at) AS last_crawl_at,
-          MAX(updated_at) AS last_updated_at
+          MAX(updated_at) AS last_updated_at,
+          -- created_at only changes on a genuinely NEW insert (not on re-crawl).
+          MAX(created_at) AS last_new_at,
+          COUNT(*) FILTER (WHERE created_at > now() - interval '1 hour')::int AS added_last_hour,
+          COUNT(*) FILTER (WHERE created_at > now() - interval '24 hours')::int AS added_today
         FROM artifacts
         """
     )
@@ -39,6 +43,9 @@ async def get_stats() -> dict:
         "embeddings_count": int(row["embeddings_count"]) if row else 0,
         "last_crawl_at": row["last_crawl_at"].isoformat() if row and row["last_crawl_at"] else None,
         "last_updated_at": row["last_updated_at"].isoformat() if row and row["last_updated_at"] else None,
+        "last_new_at": row["last_new_at"].isoformat() if row and row["last_new_at"] else None,
+        "added_last_hour": int(row["added_last_hour"]) if row else 0,
+        "added_today": int(row["added_today"]) if row else 0,
         "crawl_by_source": {
             r["source_type"]: r["last_finished"].isoformat() if r["last_finished"] else None
             for r in crawl_rows
