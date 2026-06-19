@@ -232,8 +232,9 @@ async def hybrid_search(
     *,
     limit: int = 20,
     filters: Optional[dict[str, Any]] = None,
+    rerank: Optional[bool] = None,
 ) -> dict[str, Any]:
-    """Full hybrid pipeline with project-context awareness."""
+    """Full hybrid pipeline with project-context awareness + stage-2 rerank."""
     filters = {k: v for k, v in (filters or {}).items() if v is not None}
     q = normalize_query(query)
     intent = enrich_intent(q, extract_project_intent(q))
@@ -314,6 +315,21 @@ async def hybrid_search(
         filtered = ranked[: max(limit, 3)]
 
     filtered.sort(key=lambda x: x["final_score"], reverse=True)
+
+    # Stage 2: cross-encoder reranking of the top candidates (retrieve-then-rerank).
+    use_rerank = settings.rerank_enabled if rerank is None else rerank
+    if use_rerank and filtered:
+        from .reranking_service import rerank as cross_rerank
+
+        n = min(settings.rerank_candidates, len(filtered))
+        if cross_rerank(q, filtered, n):
+            w = settings.rerank_weight
+            for a in filtered[:n]:
+                rs = a.get("rerank_score")
+                if rs is not None:
+                    a["final_score"] = w * float(rs) + (1.0 - w) * a["final_score"]
+            filtered.sort(key=lambda x: x["final_score"], reverse=True)
+
     results = filtered[:limit]
 
     return {

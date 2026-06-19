@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     search_min_final_score: float = 0.25
     search_min_vector_similarity: float = 0.32
 
+    # Stage-2 cross-encoder reranking (retrieve-then-rerank).
+    rerank_enabled: bool = True
+    rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_candidates: int = 12
+    rerank_weight: float = 0.45  # blend: weight*rerank + (1-weight)*hybrid_score
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

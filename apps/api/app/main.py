@@ -11,12 +11,14 @@ from .db import close_pool, init_pool
 from .routes import artifacts, health, profiles, search, stars, stats
 from .services.background_crawl import maybe_bootstrap_on_startup
 from .services.embedding_service import warmup
+from .services.reranking_service import warmup as rerank_warmup
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_pool()
     warmup()
+    rerank_warmup()
     await maybe_bootstrap_on_startup()
     yield
     await close_pool()

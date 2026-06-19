@@ -64,6 +64,7 @@ class SearchResultOut(ArtifactOut):
     why_relevant: str = ""
     final_score: float = 0
     project_relevance_score: float = 0
+    rerank_score: float = 0
     # Landscape fields (populated by landscape_service).
     relevance: float = 0
     relevance_pct: int = 0

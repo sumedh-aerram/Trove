@@ -84,12 +84,15 @@ arXiv ──▶    each run finds new)         ↓                              
 
 ## The search pipeline
 
+**Two-stage retrieval (retrieve → rerank):**
+
 1. **Project-intent extraction** — frameworks, tools, tags, project type (rule-based, no LLM).
-2. **Full-text retrieval** — Postgres `ts_rank_cd` across multiple strategies.
-3. **Vector retrieval** — `pgvector` cosine over local SentenceTransformers (`all-MiniLM-L6-v2`) embeddings.
-4. **Reciprocal Rank Fusion** — merges keyword, vector, and intent signals.
-5. **Final ranking** — relevance · remixability · quality · recency · underground − hype-risk.
-6. **Explainability** — per-result `why_relevant`, key points, how-to-start; per-query confidence + a one-click sharper-query suggestion.
+2. **Stage 1 — recall** — Postgres full-text (`ts_rank_cd`) + `pgvector` cosine ANN over local SentenceTransformers (`all-MiniLM-L6-v2`) embeddings, fused with **Reciprocal Rank Fusion**.
+3. **Metadata ranking** — relevance · remixability · quality · recency · underground − hype-risk.
+4. **Stage 2 — precision** — a **cross-encoder reranker** (`ms-marco-MiniLM-L-6`) rescues the top candidates by reading each (query, doc) pair jointly, then blends into the final order.
+5. **Explainability** — per-result `why_relevant`, key points, how-to-start; per-query match confidence + a one-click sharper-query suggestion.
+
+Measured with an **eval harness** (`apps/api/scripts/eval_search.py`) reporting recall@k / MRR / nDCG@10; stage-2 reranking improves nDCG@10 over stage-1 alone. Stage 1 returns in tens of ms; the cross-encoder reranks only the top-K, so warm queries stay well under a second.
 
 ## Quick start
 
@@ -181,6 +184,7 @@ Default cadence: HN ~5m · GitHub ~20m · arXiv ~3h. Search **never** triggers a
 | Backend | FastAPI · asyncpg |
 | Data | PostgreSQL + pgvector (FTS + HNSW) |
 | Embeddings | SentenceTransformers `all-MiniLM-L6-v2` (local, no paid LLM) |
+| Reranker | Cross-encoder `ms-marco-MiniLM-L-6-v2` (local) |
 | Agent layer | Model Context Protocol (TypeScript) |
 | Crawlers | Python (GitHub REST · HN Algolia · arXiv API) |
 
@@ -188,7 +192,8 @@ Default cadence: HN ~5m · GitHub ~20m · arXiv ~3h. Search **never** triggers a
 
 | Capability | State |
 |------------|-------|
-| Hybrid FTS + vector search with RRF | ✅ |
+| Two-stage retrieval: hybrid FTS + pgvector ANN + RRF, then cross-encoder reranking | ✅ |
+| Eval harness (recall@k · MRR · nDCG@10) | ✅ |
 | Interactive relevance-graph "landscape" UI | ✅ |
 | Query match-confidence + one-click sharper-query suggestion | ✅ |
 | Per-result why_relevant / about / how-it-helps / stands-out / how-to-start | ✅ |
