@@ -117,15 +117,25 @@ create table if not exists stars (
 -- ---------------------------------------------------------------------------
 -- search_events (analytics)
 -- ---------------------------------------------------------------------------
+-- One row per event. event_type: 'search' (with an impression list of the
+-- result ids shown and their positions), 'click', or 'star'. This is the raw
+-- fuel for the self-improving loop: query harvesting + click/feedback labels
+-- with position-bias correction.
 create table if not exists search_events (
   id                uuid primary key default gen_random_uuid(),
   user_id           uuid references profiles(id),
+  event_type        text not null default 'search',
   query             text not null,
   project_context   jsonb default '{}',
+  impression        jsonb default '[]',   -- [{id, pos}] for 'search' events
   clicked_artifact_id uuid,
   saved_artifact_id uuid,
+  position          integer,              -- rank of the clicked/saved result
   created_at        timestamptz default now()
 );
+
+create index if not exists idx_search_events_type_created
+  on search_events (event_type, created_at desc);
 
 -- ---------------------------------------------------------------------------
 -- crawl_runs (crawler bookkeeping)

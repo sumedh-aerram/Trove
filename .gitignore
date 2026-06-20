@@ -28,6 +28,12 @@ npm-debug.log*
 .crawl_cursor.json
 workers/.crawl_cursor.json
 
+# Self-improving loop: runtime usage artifacts + fine-tuned models (regenerated
+# locally from each deployment's own traffic; not checked in).
+apps/api/eval/*.json
+apps/api/models/
+apps/api/app/services/ltr_model.bak.txt
+
 # Playwright artifacts
 .playwright-mcp/
 

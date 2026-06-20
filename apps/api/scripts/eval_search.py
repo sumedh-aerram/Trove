@@ -111,11 +111,20 @@ def grade(blob: str, terms: list[str]) -> int:
     return sum(1 for t in terms if t in blob)
 
 
-async def build_oracle_qrels() -> tuple[dict[str, dict[str, int]], dict[str, set[str]]]:
+async def build_oracle_qrels(
+    evalset: list[tuple[str, list[str]]] | None = None,
+    feedback: dict[str, dict[str, int]] | None = None,
+) -> tuple[dict[str, dict[str, int]], dict[str, set[str]]]:
     """Ranker-independent relevant sets, graded over the WHOLE corpus.
+
+    `evalset` defaults to the curated EVALSET. `feedback` optionally overlays
+    real click/star labels per query index (qid -> {artifact_id: grade}); those
+    observed positives are merged in at max grade, so the loop learns from actual
+    user choices, not only the term heuristic.
 
     Returns (qrels, relevant_ids_by_query).
     """
+    evalset = evalset if evalset is not None else EVALSET
     rows = await db.fetch(
         "SELECT id, title, summary, what_it_helps_build, technical_core, "
         "tags, tools, frameworks, languages FROM artifacts"
@@ -124,14 +133,18 @@ async def build_oracle_qrels() -> tuple[dict[str, dict[str, int]], dict[str, set
 
     qrels: dict[str, dict[str, int]] = {}
     relevant_ids: dict[str, set[str]] = {}
-    for qi, (_q, terms) in enumerate(EVALSET):
+    for qi, (_q, terms) in enumerate(evalset):
         qid = f"q{qi}"
         graded = [(did, grade(blob, terms)) for did, blob in corpus]
         graded = [(did, g) for did, g in graded if g >= MIN_MATCHES]
         graded.sort(key=lambda x: x[1], reverse=True)
         graded = graded[:MAX_RELEVANT]
-        qrels[qid] = {did: g for did, g in graded}
-        relevant_ids[qid] = {did for did, _ in graded}
+        judged = {did: g for did, g in graded}
+        if feedback and qid in feedback:
+            for did, g in feedback[qid].items():
+                judged[did] = max(judged.get(did, 0), g)
+        qrels[qid] = judged
+        relevant_ids[qid] = set(judged)
     return qrels, relevant_ids
 
 
