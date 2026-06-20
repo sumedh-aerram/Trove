@@ -32,8 +32,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("crawl_daemon")
 
-# Jobs the daemon rotates through (rss omitted until implemented).
-DAEMON_JOBS = ("hn", "github", "arxiv", "embeddings")
+# Jobs the daemon rotates through. GitHub-led mix; HF + RSS add high-substance
+# models and builder blogs alongside HN/arXiv.
+DAEMON_JOBS = ("github", "hn", "arxiv", "hf", "rss", "embeddings")
 
 
 def _run_job(job_name: str) -> None:

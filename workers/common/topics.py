@@ -40,6 +40,30 @@ ARXIV_TOPICS: list[str] = [
 # arXiv categories to bias toward builder-relevant CS work.
 ARXIV_CATEGORIES: list[str] = ["cs.SE", "cs.CL", "cs.AI", "cs.LG", "cs.CV", "cs.IR"]
 
+# Hugging Face model search terms (Hub API `search` param). Bias to things a
+# builder can drop into a project: tasks and popular model families.
+HF_QUERIES: list[str] = [
+    "text-to-speech", "speech recognition", "whisper", "text generation",
+    "image generation", "stable diffusion", "text-to-image", "image-to-text",
+    "sentence embeddings", "reranker", "code generation", "summarization",
+    "translation", "object detection", "image segmentation", "question answering",
+    "zero-shot classification", "feature extraction", "fill-mask", "text classification",
+    "vision language", "multimodal", "function calling", "instruction tuned",
+    "llama", "qwen", "mistral", "gemma", "phi", "embedding model",
+]
+
+# RSS/Atom feeds from builder + AI-engineering blogs (high-substance write-ups).
+RSS_FEEDS: list[tuple[str, str]] = [
+    ("Hugging Face", "https://huggingface.co/blog/feed.xml"),
+    ("Simon Willison", "https://simonwillison.net/atom/everything/"),
+    ("Latent Space", "https://www.latent.space/feed"),
+    ("LangChain", "https://blog.langchain.dev/rss/"),
+    ("Phil Schmid", "https://www.philschmid.de/rss"),
+    ("Eugene Yan", "https://eugeneyan.com/rss/"),
+    ("Lilian Weng", "https://lilianweng.github.io/index.xml"),
+    ("Chip Huyen", "https://huyenchip.com/feed.xml"),
+]
+
 # GitHub discovery queries (quoted at build time).
 GITHUB_QUERIES: list[str] = [
     "AI hackathon project", "Next.js AI app", "full stack AI app", "RAG Next.js Supabase",
