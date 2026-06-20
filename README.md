@@ -18,7 +18,7 @@ A live, always-growing catalog of buildable open-source work, with a search that
 
 **Highlights**
 
-- **Two-stage search** that finds candidates fast, then reranks the top ones with an AI model for accuracy.
+- **Hybrid search** (full-text + vector) tuned by a built-in eval harness, so only ranking changes that measurably improve quality ship.
 - **A map, not a list:** results render as a graph clustered by theme, closest to the center is the best match.
 - **Live crawlers** for GitHub, Hacker News, and arXiv run 24/7 in the background, so the index keeps growing on its own.
 - **Agent ready:** an MCP server lets coding agents query the exact same search.
@@ -66,8 +66,8 @@ Results render as an interactive graph so you can see structure at a glance: whi
 **3. The index is live and always growing.**
 Background crawlers for GitHub, Hacker News, and arXiv run continuously, 24/7, with no manual work. New builds get scored, embedded, and added on their own, and the home page shows the index growing in real time ("+N added today", "last new just now"). Crawling runs separately from search, so the catalog stays fresh without ever slowing a query down.
 
-**4. Two-stage search for accuracy.**
-First a fast stage casts a wide net (full-text + vector similarity). Then a smarter AI model (a cross-encoder) re-reads the top candidates against your query and reorders them so the best result lands first. This "retrieve then rerank" approach is how modern search and RAG systems work.
+**4. Search quality you can measure.**
+A fast stage casts a wide net (full-text + vector similarity) and fuses the candidates, then metadata scoring orders them. A built-in eval harness scores every ranking change on nDCG@10, MRR, recall, and MAP with a paired significance test, so the pipeline only ships changes that actually help. The optional cross-encoder reranking stage is wired in and stays behind that eval gate.
 
 **5. It speaks fluent agent, with no paid LLM tax.**
 A first-class MCP server gives AI coding agents the exact same search through clean structured data. Trove makes zero paid LLM calls for discovery. It is the curated index agents query, not another wrapper around web search.
@@ -98,15 +98,15 @@ arXiv ──▶  every run finds new        ↓                              (no
 
 ## The search pipeline
 
-Trove uses **two-stage retrieval (retrieve, then rerank)**:
+Trove uses **hybrid retrieval with an eval-gated reranking stage**:
 
 1. **Understand the query.** A lightweight rule-based layer pulls out frameworks, tools, and goals (no LLM).
-2. **Stage 1, recall.** Postgres full-text search and `pgvector` cosine similarity (over local embeddings) pull ~60 candidates and fuse them with Reciprocal Rank Fusion. Fast, and it rarely misses anything.
+2. **Recall.** Postgres full-text search and `pgvector` cosine similarity (over local embeddings) pull ~60 candidates and fuse them with Reciprocal Rank Fusion. Fast, and it rarely misses anything.
 3. **Metadata ranking.** Candidates are scored on relevance, remixability, quality, recency, and underground value, minus hype risk.
-4. **Stage 2, precision.** A cross-encoder reranker (`ms-marco-MiniLM-L-6`) re-reads the top candidates against the query and reorders them, then blends into the final ranking.
+4. **Optional rerank (eval-gated).** A cross-encoder reranking stage is wired in but off by default: the eval showed a general-domain `ms-marco` reranker loses to stage 1 on this dev-tool corpus, so it only turns on once a model beats the baseline.
 5. **Explain it.** Every result includes why it is relevant and how to start; every query gets a confidence score and a one-click sharper-query suggestion.
 
-Quality is measured by an **eval harness** (`apps/api/scripts/eval_search.py`) that reports recall@k, MRR, and nDCG@10. Stage-2 reranking improves nDCG@10 over stage 1 alone. Stage 1 returns in tens of milliseconds, and the reranker only touches the top results, so warm searches stay well under a second.
+Quality is measured by an **eval harness** (`apps/api/scripts/eval_search.py`) that reports nDCG@10, MRR, recall@10, and MAP with a paired significance test (via `ranx`). It governs ranking changes: the current hybrid baseline holds nDCG@10 around 0.83, and reranking ships only if it clears that bar. Searches return in tens of milliseconds.
 
 ## Quick start
 
@@ -212,8 +212,9 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 
 | Capability | State |
 |------------|-------|
-| Two-stage retrieval: full-text + pgvector + RRF, then cross-encoder reranking | Done |
-| Eval harness (recall@k, MRR, nDCG@10) | Done |
+| Hybrid retrieval: full-text + pgvector + RRF + metadata ranking | Done |
+| Eval-gated cross-encoder reranking stage (off until it beats baseline) | Done |
+| Eval harness: nDCG@10, MRR, recall@10, MAP + paired significance test | Done |
 | Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | Done |
 | Interactive relevance-graph UI | Done |
 | Query match-confidence + one-click sharper-query suggestion | Done |
