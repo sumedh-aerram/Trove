@@ -9,6 +9,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .extraction_service import LANGUAGES
+
 # Artifact types collapsed into a small set of human themes (keeps the graph readable).
 _THEME_BY_TYPE: dict[str, tuple[str, str]] = {
     "starter_template": ("templates", "Starter Templates"),
@@ -256,7 +258,7 @@ def build_landscape(query: str, intent: dict[str, Any], results: list[dict[str, 
     ]
 
     confidence, advice = _query_confidence(query, intent, results)
-    suggested = _suggest_query(query, results, confidence)
+    suggested = _suggest_query(query, intent, results, confidence)
 
     return {
         "clusters": clusters,
@@ -267,11 +269,16 @@ def build_landscape(query: str, intent: dict[str, Any], results: list[dict[str, 
     }
 
 
-def _suggest_query(query: str, results: list[dict[str, Any]], confidence: int) -> str:
+def _suggest_query(
+    query: str,
+    intent: dict[str, Any],
+    results: list[dict[str, Any]],
+    confidence: int,
+) -> str:
     """For weak queries, propose a sharper version grounded in the closest matches.
 
-    Pure derivation: counts the most common stack + topics among the top results
-    and appends the informative bits the user didn't already mention.
+    Only adds refinements the user did not already state, never appends random
+    languages from top hits, and requires agreement across multiple results.
     """
     from collections import Counter
 
@@ -280,41 +287,138 @@ def _suggest_query(query: str, results: list[dict[str, Any]], confidence: int) -
 
     q = query.strip()
     q_lower = q.lower()
-    stack: Counter = Counter()
-    topics: Counter = Counter()
-    _skip_tags = {"hackernews", "arxiv", "research", "github", "ai", "open-source"}
+    tokens = set(re.findall(r"[a-z0-9+#.-]{2,}", q_lower))
+    word_count = len([w for w in re.findall(r"[a-zA-Z0-9+.#-]+", query) if len(w) > 2])
 
-    for r in results[:6]:
-        for x in (r.get("frameworks") or [])[:4]:
-            stack[x] += 1
-        for x in (r.get("tools") or [])[:4]:
-            stack[x] += 1
-        for x in (r.get("tags") or [])[:6]:
-            if x.lower() not in _skip_tags:
-                topics[x] += 1
-
-    add_stack = [x for x, _ in stack.most_common(5) if x.lower() not in q_lower][:2]
-    # Topics must add NEW information: skip anything already in the query or stack.
-    chosen = {x.lower() for x in add_stack} | set(q_lower.split())
-    add_topic: list[str] = []
-    for x, _ in topics.most_common(8):
-        if x.lower() in chosen or x.lower() in q_lower:
-            continue
-        add_topic.append(x)
-        chosen.add(x.lower())
-        if len(add_topic) == 2:
-            break
-
-    parts = [q]
-    if add_stack:
-        parts.append("using " + " and ".join(add_stack))
-    if add_topic:
-        parts.append("for " + ", ".join(add_topic))
-
-    suggestion = " ".join(parts)
-    if suggestion.strip().lower() == q_lower or len(parts) == 1:
+    # Already fairly specific — skip unless we have a high-signal refinement.
+    if word_count >= 7 and confidence >= 50:
         return ""
-    return suggestion
+
+    lang_names = {k.lower() for k in LANGUAGES} | {v.lower() for v in LANGUAGES.values()}
+    user_stack = {
+        x.lower()
+        for x in (
+            (intent.get("frameworks") or [])
+            + (intent.get("tools") or [])
+            + (intent.get("languages") or [])
+        )
+    }
+    skip_tags = {
+        "hackernews",
+        "arxiv",
+        "research",
+        "github",
+        "ai",
+        "open-source",
+        "open source",
+        "machine-learning",
+        "ml",
+        "llm",
+        "api",
+        "tool",
+        "library",
+        "repo",
+        "project",
+    } | lang_names
+
+    goal_hints = {
+        "edge",
+        "mobile",
+        "browser",
+        "real-time",
+        "realtime",
+        "offline",
+        "self-hosted",
+        "self hosted",
+        "production",
+        "streaming",
+        "on-device",
+        "on device",
+        "inference",
+        "quantization",
+        "gpu",
+        "cpu",
+        "latency",
+        "throughput",
+        "batch",
+        "serverless",
+        "local",
+        "embedded",
+        "video",
+        "image",
+        "audio",
+        "pdf",
+        "rag",
+        "agent",
+        "mcp",
+    }
+
+    stack: Counter[str] = Counter()
+    goals: Counter[str] = Counter()
+
+    for r in results[:5]:
+        for x in (r.get("frameworks") or [])[:3] + (r.get("tools") or [])[:3]:
+            xl = x.lower()
+            if xl in lang_names or xl in skip_tags:
+                continue
+            stack[x] += 1
+        for x in (r.get("tags") or [])[:8]:
+            xl = x.lower().replace("_", " ")
+            if xl in skip_tags or xl in lang_names:
+                continue
+            goals[x] += 1
+
+    def overlaps_query(term: str) -> bool:
+        tl = term.lower()
+        if tl in q_lower:
+            return True
+        for part in re.split(r"[\s/_-]+", tl):
+            if len(part) >= 3 and part in tokens:
+                return True
+        return False
+
+    def pick_stack() -> str | None:
+        if user_stack:
+            return None
+        for name, count in stack.most_common(4):
+            if count < 2 or overlaps_query(name):
+                continue
+            if name.lower() in user_stack:
+                continue
+            return name
+        return None
+
+    def pick_goal() -> str | None:
+        # Prefer constraint-like tags that sharpen the build context.
+        ranked = sorted(
+            goals.items(),
+            key=lambda kv: (kv[0].lower().replace("_", " ") in goal_hints, kv[1]),
+            reverse=True,
+        )
+        for name, count in ranked:
+            if count < 2 or overlaps_query(name):
+                continue
+            return name
+        return None
+
+    stack_pick = pick_stack()
+    goal_pick = pick_goal()
+
+    if not stack_pick and not goal_pick:
+        return ""
+
+    if stack_pick and goal_pick:
+        return f"{q} with {stack_pick}, focused on {goal_pick}"
+
+    if stack_pick:
+        return f"{q} with {stack_pick}"
+
+    if goal_pick:
+        if re.search(r"\bfor\b", q_lower):
+            return f"{q}, {goal_pick}"
+        return f"{q} for {goal_pick}"
+
+    return ""
 
 
 def _landscape_summary(
