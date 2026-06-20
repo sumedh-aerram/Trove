@@ -8,7 +8,10 @@ httpx==0.28.1
 numpy==2.2.1
 # Local embeddings (no paid LLM calls). Pulls torch; first install is large.
 sentence-transformers==3.3.1
+# Stage-2 learned reranker (LambdaMART). Tiny wheel, CPU, no model download.
+lightgbm==4.6.0
 pytest==8.3.4
 pytest-asyncio==0.25.0
-# Retrieval evaluation (nDCG/MRR/recall/MAP + significance tests)
+# Retrieval evaluation + tuning (nDCG/MRR/recall/MAP, significance, LTR training)
 ranx==0.3.21
+scikit-learn==1.8.0

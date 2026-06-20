@@ -207,16 +207,19 @@ def compute_final_score(
     substance = substance_score(artifact)
     rrf_norm = min(1.0, rrf_score * 45)
 
+    # Weights tuned via scripts/tune_search.py (nested-CV nDCG@10 0.458 -> 0.562):
+    # lean harder on project relevance + fusion rank, penalize hype more, and
+    # de-emphasize remix/quality priors that were crowding out true relevance.
     final = (
-        0.40 * rel
-        + 0.10 * rrf_norm
-        + 0.18 * remix
-        + 0.14 * quality
-        + 0.08 * underground
-        + 0.08 * recency
-        + 0.03 * popularity
-        + 0.12 * substance
-        - 0.10 * hype
+        0.50 * rel
+        + 0.20 * rrf_norm
+        + 0.03 * remix
+        + 0.07 * quality
+        + 0.13 * underground
+        + 0.02 * recency
+        + 0.01 * popularity
+        + 0.08 * substance
+        - 0.20 * hype
     )
     return max(0.0, min(1.0, final))
 

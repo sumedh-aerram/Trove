@@ -17,6 +17,17 @@ class Settings(BaseSettings):
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dim: int = 384
 
+    # HNSW recall/latency knob: how many candidates the index explores per probe.
+    # Default pgvector value is 40; raising it improves vector recall for a few ms.
+    hnsw_ef_search: int = 200
+
+    # Pseudo-relevance feedback (vector-side Rocchio). Eval-gated; see
+    # scripts/eval_search.py. Expands the query embedding toward the centroid of
+    # the top-k first-pass hits (no FTS noise). Default off until it beats baseline.
+    prf_enabled: bool = False
+    prf_top_k: int = 5
+    prf_beta: float = 0.5
+
     # Comma-separated list of allowed CORS origins.
     cors_origins: str = "http://localhost:3000"
 
@@ -34,9 +45,24 @@ class Settings(BaseSettings):
     bootstrap_min_artifacts: int = 40
 
     # Drop weak matches (improves precision for local indexes).
-    search_min_project_relevance: float = 0.2
-    search_min_final_score: float = 0.25
-    search_min_vector_similarity: float = 0.32
+    # Tuned via scripts/tune_search.py (nested-CV nDCG@10 0.458 -> 0.562):
+    # looser final/relevance gates recover retrieval recall; stricter vector
+    # escape trims noisy low-similarity matches from the weak 384d embeddings.
+    search_min_project_relevance: float = 0.11
+    search_min_final_score: float = 0.19
+    search_min_vector_similarity: float = 0.43
+
+    # Stage-2 learned reranker (LightGBM LambdaMART over hand-crafted features).
+    # Trained + nested-CV validated by scripts/train_ltr.py (held-out nDCG@10
+    # 0.605 -> 0.629). No model download, scores in microseconds. Falls back to
+    # the linear blend if the model file or lightgbm is missing.
+    ltr_enabled: bool = True
+
+    # Maximal Marginal Relevance: reorder top results to reduce near-duplicate
+    # themes (variety over pure relevance). Eval-gated; lambda=1.0 is pure
+    # relevance, lower trades relevance for diversity.
+    mmr_enabled: bool = False
+    mmr_lambda: float = 0.7
 
     # Stage-2 cross-encoder reranking (retrieve-then-rerank).
     # Disabled by default: the eval harness (scripts/eval_search.py) shows the
