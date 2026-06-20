@@ -31,6 +31,12 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
         decoder=json.loads,
         schema="pg_catalog",
     )
+    # Raise HNSW search effort for better vector recall (session-level GUC).
+    try:
+        ef = get_settings().hnsw_ef_search
+        await conn.execute(f"SET hnsw.ef_search = {int(ef)}")
+    except Exception:  # noqa: BLE001 — older pgvector without the GUC
+        pass
 
 
 async def init_pool() -> asyncpg.Pool:

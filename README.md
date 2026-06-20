@@ -98,15 +98,15 @@ arXiv ──▶  every run finds new        ↓                              (no
 
 ## The search pipeline
 
-Trove uses **hybrid retrieval with an eval-gated reranking stage**:
+Trove uses **hybrid retrieval, a tuned blend, and a learned reranker**, every stage validated by an eval harness:
 
 1. **Understand the query.** A lightweight rule-based layer pulls out frameworks, tools, and goals (no LLM).
-2. **Recall.** Postgres full-text search and `pgvector` cosine similarity (over local embeddings) pull ~60 candidates and fuse them with Reciprocal Rank Fusion. Fast, and it rarely misses anything.
-3. **Metadata ranking.** Candidates are scored on relevance, remixability, quality, recency, and underground value, minus hype risk.
-4. **Optional rerank (eval-gated).** A cross-encoder reranking stage is wired in but off by default: the eval showed a general-domain `ms-marco` reranker loses to stage 1 on this dev-tool corpus, so it only turns on once a model beats the baseline.
+2. **Recall.** Postgres full-text search (field-weighted) and `pgvector` cosine similarity (over local embeddings, with a raised HNSW `ef_search`) pull ~100 candidates per leg and fuse them with weighted Reciprocal Rank Fusion. The fusion weights are tuned, not guessed.
+3. **Score.** A metadata blend (relevance, remixability, quality, recency, underground value, substance, minus hype) gates and orders candidates. The weights were fit by random search under nested cross-validation.
+4. **Learned rerank (LambdaMART).** A LightGBM listwise model reorders the gated candidates using the same signals as features. It is trained and nested-CV validated by `scripts/train_ltr.py`, scores in microseconds with no model download, and falls back to the linear blend if unavailable. A cross-encoder stage is also wired in but stays eval-gated off (a general-domain model lost to the baseline here).
 5. **Explain it.** Every result includes why it is relevant and how to start; every query gets a confidence score and a one-click sharper-query suggestion.
 
-Quality is measured by an **eval harness** (`apps/api/scripts/eval_search.py`) that reports nDCG@10, MRR, recall@10, and MAP with a paired significance test (via `ranx`). It governs ranking changes: the current hybrid baseline holds nDCG@10 around 0.83, and reranking ships only if it clears that bar. Searches return in tens of milliseconds.
+Quality is measured by an **eval harness** (`apps/api/scripts/eval_search.py`) over 50 queries with a ranker-independent relevant set (graded across the whole corpus, so it can see retrieval misses). It reports nDCG@10, MRR, recall@10 and MAP with a paired significance test and bootstrap confidence intervals (via `ranx`), plus a retrieval-vs-ranking diagnostic. Tuning the fusion weights, blend, and gates lifted held-out nDCG@10 from 0.46 to 0.56 (nested CV), and the learned reranker adds a further validated gain on top. The harness gates every ranking change: it ships only if it beats the baseline on queries it was not tuned on.
 
 ## Quick start
 
@@ -212,9 +212,11 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 
 | Capability | State |
 |------------|-------|
-| Hybrid retrieval: full-text + pgvector + RRF + metadata ranking | Done |
-| Eval-gated cross-encoder reranking stage (off until it beats baseline) | Done |
-| Eval harness: nDCG@10, MRR, recall@10, MAP + paired significance test | Done |
+| Hybrid retrieval: field-weighted FTS + pgvector + tuned RRF + metadata blend | Done |
+| Learned LambdaMART reranker (LightGBM), nested-CV validated, no download | Done |
+| Tuning harness: random search under nested cross-validation | Done |
+| Eval harness: oracle qrels, nDCG@10/MRR/recall@10/MAP, significance + bootstrap CIs | Done |
+| Eval-gated cross-encoder + PRF + MMR (off until they beat baseline) | Done |
 | Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | Done |
 | Interactive relevance-graph UI | Done |
 | Query match-confidence + one-click sharper-query suggestion | Done |
