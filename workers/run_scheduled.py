@@ -33,9 +33,16 @@ logger = logging.getLogger("run_scheduled")
 
 
 def _run_github() -> None:
-    from ingest.run_github import main as github_main
+    # Call main_async directly with default args. run_github.main() re-parses
+    # the command line, which breaks when the daemon invokes us with a job name.
+    import argparse
 
-    github_main()
+    from ingest.run_github import main_async
+
+    args = argparse.Namespace(
+        query=None, per_page=30, max_pages=1, limit_queries=0, dry_run=False
+    )
+    asyncio.run(main_async(args))
 
 
 async def _run_hn() -> None:
