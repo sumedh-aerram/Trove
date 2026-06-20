@@ -188,7 +188,7 @@ def _how_it_helps(artifact: dict[str, Any]) -> str:
     use = _clip(artifact.get("practical_use_case"), 170, strip_md=True)
     if helps and use and helps.lower() not in use.lower():
         return f"{helps} Useful for {use[0].lower()}{use[1:]}" if use else helps
-    return helps or use or "A reusable starting point you can fork into your own build."
+    return helps or use or "A strong example you can learn from and adapt into your own build."
 
 
 def _stands_out(artifact: dict[str, Any]) -> list[str]:

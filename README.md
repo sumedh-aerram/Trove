@@ -2,11 +2,11 @@
 
 # Trove
 
-### Describe what you're building. See the landscape of what to remix.
+### Describe what you're building. See the landscape of what to learn from.
 
-Trove is a discovery engine for builders. You type what you are trying to make, and instead of a flat list of links you get an **interactive map of real open-source projects, techniques, starter templates, MCP servers, and papers** you can actually reuse, ranked by how easy they are to remix into *your* project (not by how loud they trend).
+Trove is a discovery engine for builders. You type what you are trying to make, and instead of a flat list of links you get an **interactive map of real open-source projects, techniques, starter templates, MCP servers, and papers** you can learn from, ranked by how relevant they are to *your* project (not by how loud they trend).
 
-It is also a **data layer for AI coding agents**: the same search powers an MCP server, so agents in Cursor, Claude Code, or Cline can pull reusable builds on demand.
+It is also a **data layer for AI coding agents**: the same search powers an MCP server, so agents in Cursor, Claude Code, or Cline can pull examples to learn from on demand.
 
 </div>
 
@@ -28,18 +28,17 @@ A live, always-growing catalog of buildable open-source work, with a search that
 
 ## The problem
 
-When you start something new, the hardest part usually isn't writing code. It's finding the 70% that already exists.
+You have an idea. You know what you want to build. What you do not know yet is **the best way to build it**.
 
-Say you want to build an AI lecture summarizer with quizzes. Someone has already solved the transcription, the chunking, the quiz prompt, the auth, the billing. But finding their work means:
+Before you write a line, you need reference points: how other people approached the same problem, what patterns they used, what stack they picked, what tradeoffs they made. You are not looking for a copy-paste template. You are looking for **creativity fuel**, the way a designer browses UI libraries to spark a direction before touching Figma.
 
-- digging through GitHub stars (where "popular" usually means old and huge, not useful to you),
-- doomscrolling Hacker News and Twitter,
-- skimming arXiv,
-- and reading a hundred "Top 10 AI repos" posts that all list the same five hyped libraries.
+That is the gap. GitHub ranks by stars. Google ranks by SEO. Hacker News ranks by drama. None of them answer the question a builder actually asks:
 
-AI made this worse. Everyone ships now, so the registries are flooded. Normal search ranks by popularity and SEO. What a builder actually needs is ranking by **remixability**: can I pull this into my project this weekend? Those are different questions, and nothing answers the second one.
+> *"Show me the strongest examples of how people built something like this, so I can learn from them and make my own version."*
 
-**Trove answers the second one**, and it shows how the options relate, so you can pick a direction in 30 seconds instead of 3 hours of open tabs.
+Every hackathon, every side project, every weekend build starts the same way: 40 open tabs, three hours of scrolling, and still no clear picture of the landscape. The code exists. The papers exist. The write-ups exist. They are just scattered across five platforms and buried under hype.
+
+**Trove is the missing browse layer for builders.** One query, one map, the best examples clustered by how they relate to what you are making. Pick a direction in 30 seconds, not 3 hours.
 
 ## What it feels like
 
@@ -76,7 +75,7 @@ A first-class MCP server gives AI coding agents the exact same search through cl
 
 - **Vibe coders and indie hackers** who want a forkable head start instead of a blank repo.
 - **Hackathon teams** who need to ship a demo this weekend.
-- **AI coding agents** (via MCP) that need a queryable index of reusable builds.
+- **AI coding agents** (via MCP) that need a queryable index of builds to learn from.
 
 ## How it works
 
