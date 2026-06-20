@@ -39,7 +39,11 @@ class Settings(BaseSettings):
     search_min_vector_similarity: float = 0.32
 
     # Stage-2 cross-encoder reranking (retrieve-then-rerank).
-    rerank_enabled: bool = True
+    # Disabled by default: the eval harness (scripts/eval_search.py) shows the
+    # general-domain ms-marco reranker significantly underperforms stage-1 hybrid
+    # on this dev-tool corpus (nDCG@10 0.67 vs 0.83, p<0.05). Re-enable only with a
+    # model that beats stage-1 in the eval (e.g. a domain-tuned bge reranker).
+    rerank_enabled: bool = False
     rerank_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_candidates: int = 12
     rerank_weight: float = 0.45  # blend: weight*rerank + (1-weight)*hybrid_score
