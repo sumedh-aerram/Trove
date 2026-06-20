@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import db
 from ..schemas import StarRequest
+from ..services import feedback_service
 from .profile_helpers import get_or_create_profile
 
 router = APIRouter(prefix="/artifacts", tags=["stars"])
@@ -29,6 +30,8 @@ async def star_artifact(artifact_id: str, body: StarRequest) -> dict:
         "UPDATE profiles SET credibility_score = credibility_score + 1 WHERE id = $1::uuid",
         str(profile["id"]),
     )
+    # A star with search context is a strong positive label for the loop.
+    await feedback_service.log_star(body.query, artifact_id, body.position)
     return {"ok": True, "artifact_id": artifact_id, "username": body.username}
 
 

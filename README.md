@@ -108,6 +108,17 @@ Trove uses **hybrid retrieval, a tuned blend, and a learned reranker**, every st
 
 Quality is measured by an **eval harness** (`apps/api/scripts/eval_search.py`) over 50 queries with a ranker-independent relevant set (graded across the whole corpus, so it can see retrieval misses). It reports nDCG@10, MRR, recall@10 and MAP with a paired significance test and bootstrap confidence intervals (via `ranx`), plus a retrieval-vs-ranking diagnostic. Tuning the fusion weights, blend, and gates lifted held-out nDCG@10 from 0.46 to 0.56 (nested CV), and the learned reranker adds a further validated gain on top. The harness gates every ranking change: it ships only if it beats the baseline on queries it was not tuned on.
 
+## The self-improving loop
+
+Trove gets better the more it is used, without manual labeling:
+
+1. **Capture.** Every search logs an impression (which results, at which ranks); clicks and stars log which result the user chose, tied to the query (`search_events`).
+2. **Harvest.** `scripts/harvest_eval.py` turns that log into new eval queries (coverage) and `(query, relevant-doc)` training pairs, with **position-bias correction** (clicks are inverse-propensity weighted, since a top-rank click is partly just position).
+3. **Retrain.** `scripts/refresh_models.py` retrains the LambdaMART reranker on curated plus harvested data and real click/star labels, then **validates on the frozen curated eval set and rolls back on any regression**. With enough pairs, `scripts/finetune_embeddings.py` fine-tunes the embedding model itself (MNRL + hard-negative mining with false-negative filtering) to lift retrieval recall.
+4. **Guardrail.** The hand-written eval set stays frozen and is never trained on, so the loop can grow coverage but can never quietly make quality worse.
+
+Schedule `refresh_models.py` via cron (see `workers/crontab.example`) and the catalog and the ranking both keep improving on their own.
+
 ## Quick start
 
 ```bash
@@ -217,6 +228,8 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 | Tuning harness: random search under nested cross-validation | Done |
 | Eval harness: oracle qrels, nDCG@10/MRR/recall@10/MAP, significance + bootstrap CIs | Done |
 | Eval-gated cross-encoder + PRF + MMR (off until they beat baseline) | Done |
+| Self-improving loop: usage capture, harvest, retrain, held-out guardrail | Done |
+| Embedding fine-tuning from click pairs (MNRL + hard negatives), data-gated | Done |
 | Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | Done |
 | Interactive relevance-graph UI | Done |
 | Query match-confidence + one-click sharper-query suggestion | Done |

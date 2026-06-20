@@ -102,6 +102,9 @@ class SearchResponse(BaseModel):
 
 class StarRequest(BaseModel):
     username: str
+    # Optional search context: lets a star double as a strong relevance signal.
+    query: Optional[str] = None
+    position: Optional[int] = None
 
 
 class ProfileResponse(BaseModel):

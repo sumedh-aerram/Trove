@@ -3,9 +3,11 @@ from __future__ import annotations
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Query
+from pydantic import BaseModel
 
 from ..config import get_settings
 from ..schemas import SearchResponse, SearchResultOut
+from ..services import feedback_service
 from ..services.background_crawl import maybe_refresh_index
 from ..services.landscape_service import build_landscape
 from ..services.search_service import hybrid_search
@@ -42,6 +44,11 @@ async def search(
     if settings.background_crawl_on_search:
         background_tasks.add_task(maybe_refresh_index)
 
+    # Log the impression for the self-improving loop (best-effort, off the hot path).
+    background_tasks.add_task(
+        feedback_service.log_search, result["query"], result["results"], result["intent"]
+    )
+
     landscape = build_landscape(result["query"], result["intent"], result["results"])
     results = [SearchResultOut(**r) for r in result["results"]]
     return SearchResponse(
@@ -55,3 +62,16 @@ async def search(
         query_advice=landscape["query_advice"],
         suggested_query=landscape["suggested_query"],
     )
+
+
+class ClickEvent(BaseModel):
+    query: str
+    artifact_id: str
+    position: Optional[int] = None
+
+
+@router.post("/events/click")
+async def log_click(event: ClickEvent) -> dict:
+    """Record that a user opened a result for a query (implicit relevance signal)."""
+    await feedback_service.log_click(event.query, event.artifact_id, event.position)
+    return {"ok": True}

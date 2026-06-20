@@ -31,6 +31,7 @@ from app.db import close_pool, init_pool  # noqa: E402
 from app.services.ranking_service import compute_final_score  # noqa: E402
 from app.services.ltr_service import FEATURE_NAMES, feature_row  # noqa: E402
 from app.services.search_service import retrieve_legs  # noqa: E402
+from scripts.eval_data import combined_evalset, feedback_overlay  # noqa: E402
 from scripts.eval_search import EVALSET, build_oracle_qrels  # noqa: E402
 from scripts.tune_search import ndcg_at_k  # noqa: E402
 
@@ -77,10 +78,14 @@ async def main() -> None:
 
     await init_pool()
     try:
-        qrels, _ = await build_oracle_qrels()
+        evalset = combined_evalset()          # curated (frozen) + harvested usage
+        overlay = feedback_overlay(evalset)   # real click/star positives
+        qrels, _ = await build_oracle_qrels(evalset, overlay)
         per_q: dict[str, dict] = {}
-        print(f"Building feature sets for {len(EVALSET)} queries...")
-        for i, (q, _t) in enumerate(EVALSET):
+        n_harvested = len(evalset) - len(EVALSET)
+        print(f"Building feature sets for {len(evalset)} queries "
+              f"({n_harvested} harvested, {len(overlay)} with click/star labels)...")
+        for i, (q, _t) in enumerate(evalset):
             qid = f"q{i}"
             legs = await retrieve_legs(q, candidate_limit=120)
             cands, rrf = _candidates(legs)
@@ -95,7 +100,7 @@ async def main() -> None:
             per_q[qid] = {"ids": ids, "X": np.array(X), "y": np.array(labels),
                           "base": base_scores, "rels": qrels[qid]}
 
-        qids = [f"q{i}" for i in range(len(EVALSET))]
+        qids = [f"q{i}" for i in range(len(evalset))]
         rng = np.random.RandomState(SEED)
         shuffled = qids[:]
         rng.shuffle(shuffled)

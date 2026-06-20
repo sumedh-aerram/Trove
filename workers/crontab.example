@@ -23,3 +23,7 @@ PATH=/usr/local/bin:/usr/bin:/bin
 
 # Backfill embeddings after crawls — every 2 hours
 15 */2 * * * cd "/Users/you/Trove/workers" && /path/to/.venv/bin/python run_scheduled.py embeddings >> /tmp/trove-emb.log 2>&1
+
+# Self-improving loop: harvest real usage, retrain the reranker, guard the
+# frozen held-out eval, roll back on regression — daily at 04:00.
+0 4 * * * cd "/Users/you/Trove/apps/api" && DATABASE_URL=postgresql://postgres:postgres@localhost:5433/build_radar PYTHONPATH=. /path/to/.venv/bin/python scripts/refresh_models.py >> /tmp/trove-refresh.log 2>&1
