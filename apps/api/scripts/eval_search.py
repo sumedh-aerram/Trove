@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Retrieval eval harness: recall@k, MRR, nDCG@10, rerank ON vs OFF.
+"""Retrieval eval harness using ranx (trec_eval-validated metrics).
 
-Relevance is a transparent proxy: a result is graded by how many of a query's
-expected signal terms appear in its title/summary/tags/stack (0..3+). That's not
-human-labeled gold, but it's a consistent, reproducible yardstick for comparing
-ranking configs — which is exactly what we need to show that stage-2
-cross-encoder reranking improves ordering over first-stage hybrid retrieval.
+Compares ranking configs (stage-1 hybrid only vs stage-2 with cross-encoder
+reranking) on nDCG@10, MRR, Recall@10, MAP, with a paired significance test.
+
+Relevance (qrels) is a transparent proxy: each query has expected signal terms,
+and a result is graded 0..3 by how many of those terms appear in its
+title/summary/tags/stack. Judgments are pooled across both configs so the
+comparison is fair. This is not human gold, but it is a consistent, reproducible
+yardstick for hill-climbing ranking changes.
 
 Run (from apps/api):
   DATABASE_URL=postgresql://postgres:postgres@localhost:5433/build_radar \
@@ -14,7 +17,6 @@ Run (from apps/api):
 from __future__ import annotations
 
 import asyncio
-import math
 import sys
 from pathlib import Path
 
@@ -33,13 +35,18 @@ EVALSET: list[tuple[str, list[str]]] = [
     ("voice agent low latency speech", ["voice", "speech", "tts", "stt", "realtime", "audio"]),
     ("local LLM inference with quantization", ["local", "llm", "quantiz", "inference", "ollama", "llama"]),
     ("vector search semantic retrieval", ["vector", "embedding", "semantic", "retrieval", "search", "pgvector"]),
+    ("Next.js Supabase starter template", ["next", "supabase", "starter", "template", "boilerplate", "auth"]),
+    ("agent framework with tool use", ["agent", "framework", "tool", "langchain", "workflow", "function"]),
+    ("PDF document question answering", ["pdf", "document", "qa", "question", "rag", "chat"]),
+    ("image generation diffusion app", ["image", "diffusion", "generation", "stable", "art", "text-to-image"]),
 ]
 
 K = 10
+LIMIT = 20
 
 
 def grade(artifact: dict, terms: list[str]) -> int:
-    """Graded relevance: count distinct expected terms present in the artifact text."""
+    """Graded relevance 0..3 = how many expected terms appear in the artifact."""
     blob = " ".join(
         str(artifact.get(f) or "")
         for f in ("title", "summary", "what_it_helps_build", "technical_core")
@@ -47,48 +54,50 @@ def grade(artifact: dict, terms: list[str]) -> int:
     blob += " " + " ".join(
         x.lower() for key in ("tags", "tools", "frameworks") for x in (artifact.get(key) or [])
     )
-    return sum(1 for t in terms if t in blob)
-
-
-def dcg(gains: list[float]) -> float:
-    return sum(g / math.log2(i + 2) for i, g in enumerate(gains))
-
-
-def ndcg_at_k(rels: list[int], k: int) -> float:
-    gains = [float(r) for r in rels[:k]]
-    ideal = sorted([float(r) for r in rels], reverse=True)[:k]
-    idcg = dcg(ideal)
-    return dcg(gains) / idcg if idcg > 0 else 0.0
-
-
-def metrics_for(results: list[dict], terms: list[str], k: int) -> tuple[float, float, float]:
-    rels = [grade(r, terms) for r in results[:k]]
-    binary = [1 if r >= 2 else 0 for r in rels]  # "relevant" = >=2 expected terms
-    recall = sum(binary) / max(1, min(k, len([1 for _ in results[:k]])))  # frac of top-k that are relevant
-    mrr = 0.0
-    for i, b in enumerate(binary):
-        if b:
-            mrr = 1.0 / (i + 1)
-            break
-    return recall, mrr, ndcg_at_k(rels, k)
+    return min(3, sum(1 for t in terms if t in blob))
 
 
 async def run() -> None:
+    from ranx import Qrels, Run, compare
+
     await init_pool()
+    configs = {"stage-1 hybrid": False, "stage-2 +rerank": True}
+    qrels_dict: dict[str, dict[str, int]] = {}
+    runs: dict[str, dict[str, dict[str, float]]] = {name: {} for name in configs}
+
     try:
-        for label, use_rerank in (("STAGE-1 (hybrid only)", False), ("STAGE-2 (+ rerank)", True)):
-            tot_recall = tot_mrr = tot_ndcg = 0.0
-            for q, terms in EVALSET:
-                res = await hybrid_search(q, limit=K, rerank=use_rerank)
-                recall, mrr, ndcg = metrics_for(res["results"], terms, K)
-                tot_recall += recall
-                tot_mrr += mrr
-                tot_ndcg += ndcg
-            n = len(EVALSET)
-            print(
-                f"{label:24}  recall@{K}={tot_recall / n:.3f}  "
-                f"MRR={tot_mrr / n:.3f}  nDCG@{K}={tot_ndcg / n:.3f}"
-            )
+        for qi, (q, terms) in enumerate(EVALSET):
+            qid = f"q{qi}"
+            pooled: dict[str, dict] = {}
+            for name, rerank in configs.items():
+                res = await hybrid_search(q, limit=LIMIT, rerank=rerank)
+                scores: dict[str, float] = {}
+                for rank, r in enumerate(res["results"]):
+                    did = str(r["id"])
+                    scores[did] = float(r.get("final_score") or 0) + (LIMIT - rank) * 1e-6
+                    pooled[did] = r
+                runs[name][qid] = scores
+            # graded judgments pooled across both configs
+            judged = {did: grade(art, terms) for did, art in pooled.items()}
+            if any(v > 0 for v in judged.values()):
+                qrels_dict[qid] = judged
+            else:
+                # keep the query but mark nothing relevant (rare)
+                qrels_dict[qid] = {did: 0 for did in judged}
+
+        qrels = Qrels(qrels_dict)
+        run_objs = [Run(runs[name], name=name) for name in configs]
+        report = compare(
+            qrels=qrels,
+            runs=run_objs,
+            metrics=["ndcg@10", "mrr", "recall@10", "map@10"],
+            max_p=0.05,  # paired Student's t-test threshold
+        )
+        print("\n=== Trove retrieval eval (ranx, " + str(len(EVALSET)) + " queries) ===\n")
+        print(report)
+        print(
+            "\nSuperscript letters mark configs a result is significantly better than (paired t-test, p<0.05)."
+        )
     finally:
         await close_pool()
 
