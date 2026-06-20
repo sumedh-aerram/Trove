@@ -144,12 +144,35 @@ body {
   animation: br-mote var(--dur, 60s) ease-in-out infinite;
 }
 
+/* aurora: slow drifting + breathing color bands */
+@keyframes br-aurora-a {
+  0%, 100% { transform: translate(-8%, 0) rotate(-8deg) scale(1); }
+  50% { transform: translate(10%, -5%) rotate(-5deg) scale(1.15); }
+}
+@keyframes br-aurora-b {
+  0%, 100% { transform: translate(8%, 4%) rotate(6deg) scale(1.1); }
+  50% { transform: translate(-9%, -3%) rotate(9deg) scale(0.95); }
+}
+@keyframes br-aurora-c {
+  0%, 100% { transform: translate(0, 6%) scale(1); }
+  50% { transform: translate(-6%, -4%) scale(1.2); }
+}
+@keyframes br-breathe {
+  0%, 100% { opacity: 0.07; }
+  50% { opacity: 0.2; }
+}
+@keyframes br-breathe-soft {
+  0%, 100% { opacity: 0.05; }
+  50% { opacity: 0.14; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .br-kenburns,
   .br-kenburns-slow,
   .br-fade-up,
   .br-star,
-  .br-mote {
+  .br-mote,
+  .br-aurora {
     animation: none !important;
   }
 }

@@ -169,6 +169,26 @@ def project_relevance_score(
     return min(1.0, score / weight_sum)
 
 
+def substance_score(artifact: dict[str, Any]) -> float:
+    """How much real, reusable substance an artifact has (0-1).
+
+    Rewards runnable code + setup + a real write-up; penalizes bare link posts
+    (e.g. low-signal Hacker News items) that crowd out genuinely buildable work.
+    """
+    s = 0.0
+    if artifact.get("has_code"):
+        s += 0.4
+    if artifact.get("setup_commands") or artifact.get("implementation_steps"):
+        s += 0.3
+    text = " ".join(
+        str(artifact.get(k) or "")
+        for k in ("summary", "what_it_helps_build", "technical_core")
+    )
+    if len(text) >= 120:
+        s += 0.3
+    return min(1.0, s)
+
+
 def compute_final_score(
     artifact: dict[str, Any],
     intent: dict[str, Any],
@@ -184,16 +204,18 @@ def compute_final_score(
     recency = recency_score(artifact.get("published_at"))
     popularity = normalize_score(artifact.get("popularity_score"))
     hype = normalize_score(artifact.get("hype_risk_score"))
+    substance = substance_score(artifact)
     rrf_norm = min(1.0, rrf_score * 45)
 
     final = (
-        0.42 * rel
+        0.40 * rel
         + 0.10 * rrf_norm
-        + 0.20 * remix
-        + 0.15 * quality
-        + 0.10 * underground
-        + 0.10 * recency
-        + 0.05 * popularity
+        + 0.18 * remix
+        + 0.14 * quality
+        + 0.08 * underground
+        + 0.08 * recency
+        + 0.03 * popularity
+        + 0.12 * substance
         - 0.10 * hype
     )
     return max(0.0, min(1.0, final))

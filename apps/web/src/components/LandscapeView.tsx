@@ -1,12 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { LandscapeGraph } from "@/components/LandscapeGraph";
-import { PaintingBackdrop } from "@/components/PaintingBackdrop";
+import { AuroraBackground } from "@/components/AuroraBackground";
 import { ResultPanel } from "@/components/ResultPanel";
 import { searchArtifacts } from "@/lib/api";
 import type { SearchResponse } from "@/lib/types";
+
+// 3D graph is client + WebGL only; load without SSR.
+const Graph3D = dynamic(() => import("@/components/Graph3D").then((m) => m.Graph3D), {
+  ssr: false,
+});
 
 export function LandscapeView({ initialQuery }: { initialQuery: string }) {
   const router = useRouter();
@@ -66,7 +71,7 @@ export function LandscapeView({ initialQuery }: { initialQuery: string }) {
 
   return (
     <main className="relative flex h-screen flex-col">
-      <PaintingBackdrop variant="results" />
+      <AuroraBackground />
       {/* header */}
       <header className="relative z-10 flex shrink-0 items-center gap-4 px-5 pt-5 pl-32">
         <form onSubmit={submit} className="flex-1">
@@ -124,7 +129,7 @@ export function LandscapeView({ initialQuery }: { initialQuery: string }) {
             </div>
           )}
           {!loading && !error && data && data.results.length > 0 && (
-            <LandscapeGraph
+            <Graph3D
               query={data.query}
               results={data.results}
               clusters={data.clusters || []}

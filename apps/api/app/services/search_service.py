@@ -32,6 +32,39 @@ from .ranking_service import (
 CANDIDATE_LIMIT = 60
 
 
+def _dedupe_key(artifact: dict[str, Any]) -> str:
+    """Collapse the same underlying thing arriving from multiple sources.
+
+    A repo found on GitHub and linked from a Hacker News post should appear once.
+    Falls back to a normalized title so near-identical entries don't both show.
+    """
+    url = (artifact.get("source_url") or artifact.get("canonical_url") or "").lower()
+    m = re.search(r"github\.com/([^/]+/[^/#?]+)", url)
+    if m:
+        return "gh:" + m.group(1).rstrip("/").removesuffix(".git")
+    m = re.search(r"arxiv\.org/(?:abs|pdf)/([0-9.]+)", url)
+    if m:
+        return "arxiv:" + m.group(1)
+    title = re.sub(r"[^a-z0-9]+", "", (artifact.get("title") or "").lower())
+    return "t:" + title if title else "id:" + str(artifact.get("id"))
+
+
+def _dedupe(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep the highest scoring item per dedupe key, preserving order."""
+    best: dict[str, int] = {}
+    out: list[dict[str, Any]] = []
+    for item in items:
+        key = _dedupe_key(item)
+        if key in best:
+            kept = out[best[key]]
+            if float(item.get("final_score") or 0) > float(kept.get("final_score") or 0):
+                out[best[key]] = item
+            continue
+        best[key] = len(out)
+        out.append(item)
+    return out
+
+
 def normalize_query(q: str) -> str:
     q = q.strip()
     q = re.sub(r"\s+", " ", q)
@@ -314,6 +347,8 @@ async def hybrid_search(
     if len(filtered) < min(3, limit) and ranked:
         filtered = ranked[: max(limit, 3)]
 
+    # Collapse the same repo/paper arriving from multiple sources.
+    filtered = _dedupe(filtered)
     filtered.sort(key=lambda x: x["final_score"], reverse=True)
 
     # Stage 2: cross-encoder reranking of the top candidates (retrieve-then-rerank).

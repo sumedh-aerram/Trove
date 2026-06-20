@@ -1,11 +1,11 @@
 import { HeroSearch } from "@/components/HeroSearch";
 import { IndexLine } from "@/components/IndexLine";
-import { PaintingBackdrop } from "@/components/PaintingBackdrop";
+import { PaintingReveal } from "@/components/PaintingReveal";
 
 export default function HomePage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center px-5">
-      <PaintingBackdrop variant="home" />
+      <PaintingReveal variant="home" />
       <div className="br-fade-up relative z-10 w-full max-w-xl">
         <h1 className="mb-3 text-center text-[15px] font-normal tracking-tight text-[var(--muted)]">
           creative fuel for people who build
