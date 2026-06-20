@@ -66,16 +66,20 @@ async def _run_embeddings() -> None:
 async def _run_rss() -> None:
     from ingest.run_rss import main as rss_main
 
-    if asyncio.iscoroutinefunction(rss_main):
-        await rss_main()
-    else:
-        rss_main()
+    await rss_main()
+
+
+async def _run_hf() -> None:
+    from ingest.run_huggingface import main as hf_main
+
+    await hf_main()
 
 
 ASYNC_RUNNERS = {
     "hn": _run_hn,
     "arxiv": _run_arxiv,
     "rss": _run_rss,
+    "hf": _run_hf,
     "embeddings": _run_embeddings,
 }
 

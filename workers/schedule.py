@@ -31,37 +31,48 @@ class CrawlJob:
 
 
 CRAWL_JOBS: dict[str, CrawlJob] = {
+    # Rebalanced mix: GitHub/arXiv are higher-substance (real code, papers) than
+    # most Hacker News link posts, so GitHub leads and HN is slowed down. This
+    # shifts the corpus away from being ~85% HN and lifts result relevance.
     "github": CrawlJob(
         name="github",
         source_type="github",
-        interval_hint="30-60m",
+        interval_hint="10-15m",
         module="ingest.run_github",
-        description="GitHub repo search for vibe-coder projects",
-        daemon_interval_minutes=20,
+        description="GitHub repo search for buildable projects",
+        daemon_interval_minutes=10,
     ),
     "hn": CrawlJob(
         name="hn",
         source_type="hackernews",
-        interval_hint="~5m",
+        interval_hint="~20m",
         module="ingest.run_hn",
         description="Hacker News Algolia stories",
-        daemon_interval_minutes=5,
+        daemon_interval_minutes=20,
     ),
     "arxiv": CrawlJob(
         name="arxiv",
         source_type="arxiv",
-        interval_hint="~3h",
+        interval_hint="~2h",
         module="ingest.run_arxiv",
         description="arXiv papers for builders",
-        daemon_interval_minutes=180,
+        daemon_interval_minutes=120,
+    ),
+    "hf": CrawlJob(
+        name="hf",
+        source_type="huggingface",
+        interval_hint="~90m",
+        module="ingest.run_huggingface",
+        description="Hugging Face models (high-substance, ready to use)",
+        daemon_interval_minutes=90,
     ),
     "rss": CrawlJob(
         name="rss",
         source_type="rss",
         interval_hint="30-60m",
         module="ingest.run_rss",
-        description="RSS/blog feeds (stub)",
-        daemon_interval_minutes=60,
+        description="RSS feeds from builder/AI-eng blogs",
+        daemon_interval_minutes=45,
     ),
     "embeddings": CrawlJob(
         name="embeddings",

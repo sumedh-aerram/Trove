@@ -20,7 +20,7 @@ A live, always-growing catalog of buildable open-source work, with a search that
 
 - **Hybrid search** (full-text + vector) tuned by a built-in eval harness, so only ranking changes that measurably improve quality ship.
 - **A map, not a list:** results render as a graph clustered by theme, closest to the center is the best match.
-- **Live crawlers** for GitHub, Hacker News, and arXiv run 24/7 in the background, so the index keeps growing on its own.
+- **Live crawlers** for GitHub, Hacker News, arXiv, Hugging Face models, and builder blogs (RSS) run 24/7 in the background, so the index keeps growing on its own.
 - **Agent ready:** an MCP server lets coding agents query the exact same search.
 - **Instant and free:** search reads a database in milliseconds and makes zero paid LLM calls.
 
@@ -64,7 +64,7 @@ Each result gets a blended score from relevance to your project, remixability, q
 Results render as an interactive graph so you can see structure at a glance: which options are closest to your intent, how they cluster, and which are the strongest matches.
 
 **3. The index is live and always growing.**
-Background crawlers for GitHub, Hacker News, and arXiv run continuously, 24/7, with no manual work. New builds get scored, embedded, and added on their own, and the home page shows the index growing in real time ("+N added today", "last new just now"). Crawling runs separately from search, so the catalog stays fresh without ever slowing a query down.
+Background crawlers for GitHub, Hacker News, arXiv, Hugging Face models, and builder blogs (RSS) run continuously, 24/7, with no manual work. New builds get scored, embedded, and added on their own, and the home page shows the index growing in real time ("+N added today", "last new just now"). Crawling runs separately from search, so the catalog stays fresh without ever slowing a query down.
 
 **4. Search quality you can measure.**
 A fast stage casts a wide net (full-text + vector similarity) and fuses the candidates, then metadata scoring orders them. A built-in eval harness scores every ranking change on nDCG@10, MRR, recall, and MAP with a paired significance test, so the pipeline only ships changes that actually help. The optional cross-encoder reranking stage is wired in and stays behind that eval gate.
@@ -192,7 +192,7 @@ Default cadence: Hacker News every ~5 min, GitHub every ~20 min, arXiv every ~3 
 apps/web/      Next.js 15 frontend: animated home, interactive landscape graph, detail pages
 apps/api/      FastAPI backend: two-stage search, ranking, reranking, confidence, stats
 apps/mcp/      TypeScript MCP server: calls the API, no database, no LLM
-workers/       Live crawlers (GitHub, HN, arXiv) + rotation cursor + daemon + embedding backfill
+workers/       Live crawlers (GitHub, HN, arXiv, Hugging Face, RSS) + rotation cursor + daemon + embedding backfill
 packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 ```
 
@@ -230,20 +230,20 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 | Eval-gated cross-encoder + PRF + MMR (off until they beat baseline) | Done |
 | Self-improving loop: usage capture, harvest, retrain, held-out guardrail | Done |
 | Embedding fine-tuning from click pairs (MNRL + hard negatives), data-gated | Done |
-| Live, always-on crawler daemon (GitHub, HN, arXiv) with rotation | Done |
+| Live, always-on crawler daemon (GitHub, HN, arXiv, HF, RSS) with rotation | Done |
 | Interactive relevance-graph UI | Done |
 | Query match-confidence + one-click sharper-query suggestion | Done |
 | Per-result why-relevant / about / how-it-helps / stands-out / how-to-start | Done |
 | Remixability / quality / hype-risk / underground scoring | Done |
 | MCP server (search, similar, details, recommend-stack) | Done |
-| Hugging Face / RSS crawlers | Planned |
+| Crawlers: GitHub, Hacker News, arXiv, Hugging Face models, RSS blogs | Done |
 | Hosted deployment and real auth | Planned |
 
 ## Where it goes next
 
 - One-command hosted deploy (managed Postgres + API) so a whole team shares one fresh index.
-- Hugging Face and RSS crawlers for models and builder blogs.
-- Search analytics from real queries to keep tuning ranking.
+- Upgrade the embedding model (the main retrieval-recall lever) once enough click data accrues.
+- Richer source mix and continued ranking tuning from real query analytics.
 
 ## License
 

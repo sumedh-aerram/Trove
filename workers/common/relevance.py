@@ -15,17 +15,23 @@ import math
 import os
 from typing import Any, Optional, Sequence
 
+from .paths import *  # noqa: F403  (puts apps/api on sys.path before app imports)
+
 from app.services.embedding_service import embed_text  # noqa: E402
 
 # Cosine threshold on normalized MiniLM vectors. Related builds typically score
-# 0.20-0.55; unrelated noise sits below ~0.12. Tunable via env.
-RELEVANCE_MIN = float(os.getenv("CRAWL_RELEVANCE_MIN", "0.16"))
-MIN_TEXT_LEN = int(os.getenv("CRAWL_MIN_TEXT_LEN", "40"))
+# 0.20-0.55; unrelated noise sits below ~0.12. Raised from 0.16 to trim the
+# low-signal long tail (mostly Hacker News link posts) that hurt perceived
+# relevance. Tunable via env.
+RELEVANCE_MIN = float(os.getenv("CRAWL_RELEVANCE_MIN", "0.22"))
+MIN_TEXT_LEN = int(os.getenv("CRAWL_MIN_TEXT_LEN", "60"))
 
-# Repos that are almost always noise for a "what can I build" index.
+# Titles that are almost always noise for a "what can I build" index.
 _NOISE_TITLE_HINTS = (
     "test", "demo-repo", "hello-world", "my-portfolio", "config", "dotfiles",
     "interview", "leetcode", "assignment", "homework", "tutorial-",
+    "awesome-", "cheatsheet", "cheat-sheet", "roadmap", "course", "bootcamp",
+    "interview-questions", "study-notes", "list of",
 )
 
 
