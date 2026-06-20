@@ -119,6 +119,23 @@ Trove gets better the more it is used, without manual labeling:
 
 Schedule `refresh_models.py` via cron (see `workers/crontab.example`) and the catalog and the ranking both keep improving on their own.
 
+### Reproduce the eval
+
+All numbers above are reproducible from `apps/api`:
+
+```bash
+# Clean, leakage-free retrieval benchmark (curated held-out set)
+LTR_ENABLED=false PYTHONPATH=. python scripts/eval_search.py
+
+# Re-tune the fusion/blend/gates under nested cross-validation
+PYTHONPATH=. python scripts/tune_search.py
+
+# Train + nested-CV validate the LambdaMART reranker
+PYTHONPATH=. python scripts/train_ltr.py
+```
+
+Honest headline (50-query held-out, nested CV): tuning lifted nDCG@10 from 0.46 to 0.56, and the learned reranker adds a further validated gain. In-sample numbers are higher and are flagged as such by the harness, never reported as quality.
+
 ## Quick start
 
 ```bash
@@ -244,6 +261,10 @@ packages/db/   PostgreSQL + pgvector schema, seed, and a DB-to-seed exporter
 - One-command hosted deploy (managed Postgres + API) so a whole team shares one fresh index.
 - Upgrade the embedding model (the main retrieval-recall lever) once enough click data accrues.
 - Richer source mix and continued ranking tuning from real query analytics.
+
+## Author
+
+Built by [Sumedh Aerram](https://github.com/sumedh-aerram).
 
 ## License
 
