@@ -31,7 +31,9 @@ from app.services.ranking_service import (  # noqa: E402
 )
 from app.services.search_service import _dedupe, retrieve_legs  # noqa: E402
 from app.utils.dates import recency_score  # noqa: E402
-from scripts.eval_search import EVALSET, build_oracle_qrels  # noqa: E402
+from scripts.eval_math import ndcg_at_k
+from scripts.eval_oracle import build_oracle_qrels
+from scripts.eval_queries import EVALSET
 
 LIMIT = 20
 K = 10
@@ -159,18 +161,6 @@ def score_query(legs: dict, p: Params) -> list[str]:
     gated = _dedupe(gated)
     gated.sort(key=lambda x: x["final_score"], reverse=True)
     return [str(a["id"]) for a in gated[:LIMIT]]
-
-
-def ndcg_at_k(ranked_ids: list[str], rels: dict[str, int], k: int = K) -> float:
-    """Linear-gain nDCG@k against graded relevance (trec_eval style)."""
-    dcg = 0.0
-    for i, did in enumerate(ranked_ids[:k]):
-        g = rels.get(did, 0)
-        if g > 0:
-            dcg += g / math.log2(i + 2)
-    ideal = sorted(rels.values(), reverse=True)[:k]
-    idcg = sum(g / math.log2(i + 2) for i, g in enumerate(ideal) if g > 0)
-    return dcg / idcg if idcg > 0 else 0.0
 
 
 def mean_ndcg(legs_by_q: dict[str, dict], qrels: dict[str, dict[str, int]],
