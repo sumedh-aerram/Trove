@@ -1,7 +1,7 @@
 """Unit tests for intent extraction and why_relevant (no database)."""
 from __future__ import annotations
 
-from app.services.extraction_service import extract_project_intent
+from app.services.extraction_service import build_embedding_text, extract_project_intent
 from app.services.intent_retrieval import build_retrieval_context, enrich_intent
 from app.services.ranking_service import build_why_relevant, project_relevance_score
 
@@ -59,3 +59,17 @@ def test_lecture_intent_terms():
     assert intent["project_type"] == "education_media"
     terms = " ".join(intent["search_terms"])
     assert "lecture" in terms or "quiz" in terms or "summarizer" in terms
+
+
+def test_embedding_text_includes_type_and_stack_prefix():
+    text = build_embedding_text(PAPERPAL_ARTIFACT)
+    assert text.startswith("[starter template]")
+    assert "Chrome Extension" in text or "LangChain" in text
+    assert "rag-chrome-extension" in text
+
+
+def test_retrieval_context_includes_builder_framing():
+    intent = enrich_intent(RAG_CHROME_QUERY, extract_project_intent(RAG_CHROME_QUERY))
+    ctx = build_retrieval_context(RAG_CHROME_QUERY, intent)
+    assert "Builder search" in ctx
+    assert "rag browser research" in ctx.lower()

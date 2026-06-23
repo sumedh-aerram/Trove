@@ -152,9 +152,11 @@ def enrich_intent(query: str, intent: dict[str, Any]) -> dict[str, Any]:
 
 def build_retrieval_context(query: str, intent: dict[str, Any]) -> str:
     """Rich text for embedding — captures project context, not just keywords."""
+    focus = str(intent.get("project_type", "general")).replace("_", " ")
     lines = [
         query.strip(),
-        f"Project focus: {intent.get('project_type', 'general')}.",
+        "Builder search: open-source projects, techniques, starter templates, MCP servers, and papers.",
+        f"Project focus: {focus}.",
     ]
     if intent.get("frameworks"):
         lines.append("Frameworks: " + ", ".join(intent["frameworks"]) + ".")

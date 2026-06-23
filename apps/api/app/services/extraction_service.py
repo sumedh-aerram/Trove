@@ -346,21 +346,42 @@ def infer_fields_from_text(
 
 
 def build_embedding_text(artifact: dict[str, Any]) -> str:
-    """Concatenate the fields we embed (not raw README)."""
-    parts: list[str] = []
+    """Concatenate the fields we embed (not raw README).
+
+    A structured type/stack prefix helps small bi-encoders separate MCP servers,
+    papers, templates, and repos without changing the model.
+    """
+    lines: list[str] = []
+
+    atype = (artifact.get("artifact_type") or "project").replace("_", " ")
+    stack: list[str] = []
+    for key in ("frameworks", "tools", "languages"):
+        for v in artifact.get(key) or []:
+            s = str(v).strip()
+            if s and s not in stack:
+                stack.append(s)
+    prefix = f"[{atype}]"
+    if stack:
+        prefix += " · " + " · ".join(stack[:6])
+    lines.append(prefix)
+
     for key in (
-        "title", "summary", "what_it_helps_build", "technical_core",
-        "practical_use_case", "how_to_remix",
+        "title",
+        "summary",
+        "what_it_helps_build",
+        "technical_core",
+        "practical_use_case",
+        "how_to_remix",
     ):
         val = artifact.get(key)
         if val:
-            parts.append(str(val))
+            lines.append(str(val))
     for key in ("implementation_steps", "setup_commands"):
         val = artifact.get(key) or []
         if val:
-            parts.append(" ".join(val))
-    for key in ("tags", "tools", "frameworks", "languages", "apis", "models"):
+            lines.append(" ".join(str(x) for x in val))
+    for key in ("tags", "apis", "models"):
         val = artifact.get(key) or []
         if val:
-            parts.append(" ".join(val))
-    return "\n".join(parts).strip()
+            lines.append(" ".join(str(x) for x in val))
+    return "\n".join(lines).strip()
