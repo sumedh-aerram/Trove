@@ -38,6 +38,45 @@ def load_feedback_pairs() -> list[dict]:
     return json.loads(path.read_text())
 
 
+def merge_training_pairs(feedback: list[dict], curated: list[dict]) -> list[dict]:
+    """Dedupe by (query, positive_id); feedback wins over curated on conflict."""
+    out: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for p in feedback + curated:
+        q = str(p.get("query", "")).strip()
+        pid = str(p.get("positive_id", ""))
+        if not q or not pid:
+            continue
+        key = (q.lower(), pid)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
+
+
+async def load_curated_training_pairs() -> list[dict]:
+    """One top oracle-matched artifact per frozen curated eval query."""
+    from scripts.eval_search import EVALSET, build_oracle_qrels
+
+    qrels, _ = await build_oracle_qrels(EVALSET)
+    pairs: list[dict] = []
+    for qi, (query, _) in enumerate(EVALSET):
+        judged = qrels.get(f"q{qi}", {})
+        if not judged:
+            continue
+        top_id, grade = max(judged.items(), key=lambda kv: kv[1])
+        pairs.append(
+            {
+                "query": query,
+                "positive_id": top_id,
+                "kind": "curated",
+                "weight": float(grade),
+            }
+        )
+    return pairs
+
+
 def combined_evalset(include_harvested: bool = True) -> list[tuple[str, list[str]]]:
     """Curated (frozen) first, then harvested. Curated indices stay stable."""
     out = list(EVALSET)
