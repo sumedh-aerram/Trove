@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
 """Autonomous refresh: harvest usage, retrain the reranker, guard the held-out.
 
-This is the loop's heartbeat, meant for cron (see workers/crontab.example):
-
-  1. Harvest search_events -> grown eval queries + feedback pairs.
-  2. Back up the current LTR model.
-  3. Retrain on curated + harvested data (train_ltr.py also nested-CV validates
-     and only saves if it beats the linear blend).
-  4. Guardrail: re-run the eval on the FROZEN curated set. If curated nDCG@10
-     regressed versus the backup, roll back. The loop can grow coverage but can
-     never quietly make the held-out anchor worse.
+Guardrail checks (frozen curated set):
+  - mean nDCG@10 did not drop
+  - mean recall@10 did not drop by >2%
+  - gold-subset pass@5 did not drop
+  - no single query nDCG drop >0.15
 
 Run (from apps/api):
   DATABASE_URL=... PYTHONPATH=. python scripts/refresh_models.py
@@ -30,7 +26,6 @@ BACKUP = API_DIR / "app" / "services" / "ltr_model.bak.txt"
 
 
 def _run(script: str) -> str:
-    """Run a sibling script in-process env; return stdout."""
     proc = subprocess.run(
         [sys.executable, "-u", str(API_DIR / "scripts" / script)],
         cwd=str(API_DIR),
@@ -44,46 +39,38 @@ def _run(script: str) -> str:
     return proc.stdout
 
 
-async def curated_ndcg() -> float:
-    """nDCG@10 on the FROZEN curated set only (clean held-out anchor)."""
-    from app.db import close_pool, init_pool
-    from app.services.search_service import hybrid_search
-    from scripts.eval_search import EVALSET, build_oracle_qrels
-    from scripts.tune_search import ndcg_at_k
-
-    await init_pool()
-    try:
-        qrels, _ = await build_oracle_qrels(EVALSET)  # curated only, no overlay
-        vals = []
-        for i, (q, _t) in enumerate(EVALSET):
-            res = await hybrid_search(q, limit=20)
-            ranked = [str(r["id"]) for r in res["results"]]
-            vals.append(ndcg_at_k(ranked, qrels[f"q{i}"]))
-        return sum(vals) / len(vals) if vals else 0.0
-    finally:
-        await close_pool()
-
-
 async def main() -> None:
+    from scripts.eval_metrics import measure_curated
+
     print("== 1. harvest usage ==")
     print(_run("harvest_eval.py"))
 
-    before = await curated_ndcg() if MODEL.exists() else 0.0
+    before = await measure_curated() if MODEL.exists() else None
+    if before:
+        print(
+            f"curated before: nDCG@10={before.ndcg:.3f}  "
+            f"recall@10={before.recall:.3f}  gold={before.gold_pass_rate:.1%}"
+        )
     if MODEL.exists():
         shutil.copy(MODEL, BACKUP)
-    print(f"curated held-out nDCG@10 before: {before:.3f}")
 
     print("== 2. retrain reranker ==")
     print(_run("train_ltr.py"))
 
-    after = await curated_ndcg()
-    print(f"curated held-out nDCG@10 after:  {after:.3f}")
+    after = await measure_curated()
+    print(
+        f"curated after:  nDCG@10={after.ndcg:.3f}  "
+        f"recall@10={after.recall:.3f}  gold={after.gold_pass_rate:.1%}"
+    )
 
-    if after + 1e-6 < before and BACKUP.exists():
+    rollback = before is not None and BACKUP.exists() and after.regressed_vs(before)
+    if rollback:
         shutil.copy(BACKUP, MODEL)
-        print(f"REGRESSION ({after:.3f} < {before:.3f}) -> rolled back to previous model.")
+        print("REGRESSION -> rolled back:")
+        for reason in rollback:
+            print(f"  - {reason}")
     else:
-        print("Adopted refreshed model (held-out did not regress).")
+        print("Adopted refreshed model (passed stricter guardrail).")
     if BACKUP.exists():
         BACKUP.unlink()
 
